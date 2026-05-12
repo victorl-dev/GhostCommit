@@ -9,27 +9,45 @@ import { SVGGenerator } from './svg/Generator';
 import { WebviewPanel } from './dashboard/WebviewPanel';
 import { StatusBarManager } from './status/StatusBar';
 
+const _output = vscode.window.createOutputChannel('VibeTracker');
+
 let fileMonitor: FileMonitor | undefined;
 let statusBar: StatusBarManager | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-  const cache = new SessionCache(context);
-  const ai = new AISummarizer(context);
-  const auth = new GitHubAuth();
-  const shadowRepo = new ShadowRepo(auth);
-  const svgGen = new SVGGenerator(context);
-  const profileUpdater = new ProfileUpdater(auth, svgGen);
-  const webviewPanel = new WebviewPanel(context, cache, svgGen);
+  try {
+    _output.appendLine('Activating VibeTracker...');
 
-  statusBar = new StatusBarManager();
-  statusBar.show();
+    const cache = new SessionCache(context);
+    const ai = new AISummarizer(context);
+    const auth = new GitHubAuth();
+    const shadowRepo = new ShadowRepo(auth);
+    const svgGen = new SVGGenerator(context);
+    const profileUpdater = new ProfileUpdater(auth, svgGen);
+    const webviewPanel = new WebviewPanel(context, cache, svgGen);
 
-  fileMonitor = new FileMonitor(cache, ai, shadowRepo, profileUpdater, statusBar);
+    statusBar = new StatusBarManager();
+    statusBar.show();
 
-  const config = vscode.workspace.getConfiguration('vibetracker');
-  if (config.get<boolean>('autoStart', true)) {
-    fileMonitor.start();
-  }
+    fileMonitor = new FileMonitor(cache, ai, shadowRepo, profileUpdater, statusBar);
+
+    const config = vscode.workspace.getConfiguration('vibetracker');
+    if (config.get<boolean>('autoStart', true)) {
+      fileMonitor.start();
+      _output.appendLine('Auto-start enabled — tracking began');
+    } else {
+      _output.appendLine('Auto-start disabled — awaiting manual start');
+    }
+
+    _output.appendLine('VibeTracker activated successfully');
+    vscode.window.showInformationMessage('VibeTracker is now tracking your coding activity');
+
+    // Show output channel on first activation
+    const hasShown = context.globalState.get<boolean>('vibetracker.outputShown');
+    if (!hasShown) {
+      _output.show(true);
+      context.globalState.update('vibetracker.outputShown', true);
+    }
 
   context.subscriptions.push(
     vscode.commands.registerCommand('vibetracker.start', () => {
@@ -140,11 +158,19 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   showOnboarding(context, auth, shadowRepo, profileUpdater);
+
+  } catch (err) {
+    _output.appendLine(`ACTIVATION ERROR: ${err}`);
+    vscode.window.showErrorMessage(`VibeTracker failed to activate: ${err}`);
+  }
 }
 
 export function deactivate() {
-  fileMonitor?.stop();
-  statusBar?.dispose();
+  try {
+    fileMonitor?.stop();
+    statusBar?.dispose();
+    _output.appendLine('VibeTracker deactivated');
+  } catch {}
 }
 
 async function showOnboarding(
