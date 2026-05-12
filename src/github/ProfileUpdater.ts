@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { GitHubAuth } from './AuthProvider';
-import { SVGGenerator } from '../svg/Generator';
+import { SVGGenerator, ActivityStats } from '../svg/Generator';
+import { SessionCache } from '../tracker/SessionCache';
 
 const VIBE_START = '<!-- VIBE_START -->';
 const VIBE_END = '<!-- VIBE_END -->';
@@ -8,8 +9,23 @@ const VIBE_END = '<!-- VIBE_END -->';
 export class ProfileUpdater {
   constructor(
     private auth: GitHubAuth,
-    private svgGen: SVGGenerator
+    private svgGen: SVGGenerator,
+    private cache?: SessionCache
   ) {}
+
+  private updateSvgStats() {
+    if (!this.cache) return;
+    const byLang = this.cache.getActivityByLanguage();
+    const total = this.cache.getTotalStats();
+    const recent = this.cache.getRecentSessions(1);
+    this.svgGen.updateStats({
+      totalSaves: total.totalSaves,
+      totalLines: total.totalLines,
+      sessions: this.cache.getSessionCount(),
+      byLanguage: byLang,
+      lastSummary: recent[0]?.summary || 'No activity yet'
+    });
+  }
 
   async setupReadme(): Promise<void> {
     const client = await this.auth.getClient();
@@ -105,6 +121,7 @@ export class ProfileUpdater {
       return;
     }
 
+    this.updateSvgStats();
     const svgContent = await this.svgGen.generate();
     const metricsSection = this.buildMetricsSection();
 
@@ -133,11 +150,6 @@ export class ProfileUpdater {
         'Cancel'
       );
       if (confirm !== 'Push') return;
-    } else if (notification === 'Dismiss') {
-      setTimeout(() => {
-        this.pushUpdate(client, username, repo, newReadme, sha);
-      }, 10000);
-      return;
     }
 
     await this.pushUpdate(client, username, repo, newReadme, sha);

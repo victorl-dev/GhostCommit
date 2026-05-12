@@ -23,7 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
     const auth = new GitHubAuth();
     const shadowRepo = new ShadowRepo(auth);
     const svgGen = new SVGGenerator(context);
-    const profileUpdater = new ProfileUpdater(auth, svgGen);
+    const profileUpdater = new ProfileUpdater(auth, svgGen, cache);
     const webviewPanel = new WebviewPanel(context, cache);
 
     statusBar = new StatusBarManager();
