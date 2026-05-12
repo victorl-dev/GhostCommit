@@ -1,7 +1,7 @@
 {
   "name": "ghostcommit",
   "displayName": "GhostCommit - Auto Commits and GitHub Shadow Tracker",
-  "description": "VocÃª programa em projetos pessoais mas esquece de publicar no GitHub? Isso faz seu perfil parecer vazio. O GhostCommit faz auto commits automaticos (shadow commits) para mostrar que voce esta ativo, mesmo em projetos que nunca sao publicados. Instala, programa normalmente, e seu grafico de contribuicoes do GitHub fica verdinho todo dia. Feito para quem programa por diversao mas quer um GitHub bonito.",
+  "description": "Voce programa em projetos pessoais mas esquece de publicar no GitHub? Isso faz seu perfil parecer vazio. O GhostCommit faz auto commits automaticos (shadow commits) para mostrar que voce esta ativo, mesmo em projetos que nunca sao publicados. Instala, programa normalmente, e seu grafico de contribuicoes do GitHub fica verdinho todo dia. Feito para quem programa por diversao mas quer um GitHub bonito.",
   "version": "0.1.0",
   "icon": "media/icon.png",
   "publisher": "victorlobato",
