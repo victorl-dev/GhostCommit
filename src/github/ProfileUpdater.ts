@@ -122,7 +122,9 @@ export class ProfileUpdater {
     }
 
     this.updateSvgStats();
-    const svgContent = await this.svgGen.generate();
+    const svgRaw = await this.svgGen.generate();
+    const svgBase64 = Buffer.from(svgRaw).toString('base64');
+    const svgImg = `<img src="data:image/svg+xml;base64,${svgBase64}" alt="VibeTracker Metrics"/>`;
     const metricsSection = this.buildMetricsSection();
 
     const beforeStart = readmeContent.split(VIBE_START)[0];
@@ -130,7 +132,7 @@ export class ProfileUpdater {
       ? readmeContent.split(VIBE_END).slice(1).join(VIBE_END)
       : '';
 
-    const newReadme = `${beforeStart}${VIBE_START}\n\n${metricsSection}\n\n${svgContent}\n\n${VIBE_END}${afterEnd}`;
+    const newReadme = `${beforeStart}${VIBE_START}\n\n${metricsSection}\n\n${svgImg}\n\n${VIBE_END}${afterEnd}`;
 
     const notification = await vscode.window.showInformationMessage(
       'VibeTracker wants to update your profile README',
