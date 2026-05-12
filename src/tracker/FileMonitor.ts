@@ -137,7 +137,7 @@ export class FileMonitor {
 
   private checkFlushConditions() {
     const config = vscode.workspace.getConfiguration('vibetracker');
-    const threshold = config.get<number>('savesThreshold', 10);
+    const threshold = config.get<number>('changeThreshold', 10);
     const idleMinutes = config.get<number>('flushInterval', 30);
 
     if (this.saveCount >= threshold) {

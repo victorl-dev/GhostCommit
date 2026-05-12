@@ -68,10 +68,10 @@
           "default": 30,
           "description": "Minutes of inactivity before auto-committing session data"
         },
-        "vibetracker.savesThreshold": {
+        "vibetracker.changeThreshold": {
           "type": "number",
           "default": 10,
-          "description": "Number of file saves before auto-committing"
+          "description": "Number of file changes (saves, AI writes, file creates) before auto-committing"
         },
         "vibetracker.autoStart": {
           "type": "boolean",
