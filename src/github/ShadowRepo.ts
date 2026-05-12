@@ -9,7 +9,7 @@ export class ShadowRepo {
   async ensureRepo(): Promise<string> {
     const client = await this.auth.getClient();
     const username = this.auth.getUsername();
-    const repoName = vscode.workspace.getConfiguration('vibetracker').get('shadowRepoName', 'vibetracker-logs');
+    const repoName = vscode.workspace.getConfiguration('ghostcommit').get('shadowRepoName', 'ghostcommit-logs');
 
     try {
       await client.request('GET /repos/{owner}/{repo}', {
@@ -21,7 +21,7 @@ export class ShadowRepo {
       const { data: repo } = await client.request('POST /user/repos', {
         name: repoName,
         private: true,
-        description: 'Auto-generated activity logs from VibeTracker',
+        description: 'Auto-generated activity logs from GhostCommit',
         auto_init: true
       });
       return repo.name;
@@ -31,7 +31,7 @@ export class ShadowRepo {
   async commitActivity(summary: string, filesCount: number): Promise<void> {
     const client = await this.auth.getClient();
     const username = this.auth.getUsername();
-    const repoName = vscode.workspace.getConfiguration('vibetracker').get('shadowRepoName', 'vibetracker-logs');
+    const repoName = vscode.workspace.getConfiguration('ghostcommit').get('shadowRepoName', 'ghostcommit-logs');
 
     const today = new Date().toISOString().split('T')[0];
     const path = `logs/${today}.json`;
@@ -59,7 +59,7 @@ export class ShadowRepo {
       owner: username,
       repo: repoName,
       path,
-      message: `[VibeTracker] ${summary}`,
+      message: `[GhostCommit] ${summary}`,
       content: Buffer.from(JSON.stringify(content, null, 2)).toString('base64'),
       sha
     });

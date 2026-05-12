@@ -31,11 +31,11 @@ export class GitHubAuth {
         this.username = user.login;
       }
     } catch {
-      throw new Error('Not authenticated with GitHub. Run VibeTracker: Login first.');
+      throw new Error('Not authenticated with GitHub. Run GhostCommit: Login first.');
     }
 
     if (!this.octokit) {
-      throw new Error('Not authenticated with GitHub. Run VibeTracker: Login first.');
+      throw new Error('Not authenticated with GitHub. Run GhostCommit: Login first.');
     }
 
     return this.octokit;

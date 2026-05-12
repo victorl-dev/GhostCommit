@@ -1,7 +1,7 @@
 {
-  "name": "vibetracker",
-  "displayName": "VibeTracker — Auto Commits & GitHub Shadow Tracker",
-  "description": "Você programa em projetos pessoais mas esquece de publicar no GitHub? Isso faz seu perfil parecer vazio. O VibeTracker faz auto commits automaticos (shadow commits) para mostrar que voce esta ativo, mesmo em projetos que nunca sao publicados. Instala, programa normalmente, e seu grafico de contribuicoes do GitHub fica verdinho todo dia. Feito para quem programa por diversao mas quer um GitHub bonito.",
+  "name": "ghostcommit",
+  "displayName": "GhostCommit - Auto Commits and GitHub Shadow Tracker",
+  "description": "VocÃª programa em projetos pessoais mas esquece de publicar no GitHub? Isso faz seu perfil parecer vazio. O GhostCommit faz auto commits automaticos (shadow commits) para mostrar que voce esta ativo, mesmo em projetos que nunca sao publicados. Instala, programa normalmente, e seu grafico de contribuicoes do GitHub fica verdinho todo dia. Feito para quem programa por diversao mas quer um GitHub bonito.",
   "version": "0.1.0",
   "icon": "media/icon.png",
   "publisher": "victorlobato",
@@ -19,82 +19,86 @@
   "contributes": {
     "commands": [
       {
-        "command": "vibetracker.start",
-        "title": "VibeTracker: Start Tracking"
+        "command": "ghostcommit.start",
+        "title": "ghostcommit: Start Tracking"
       },
       {
-        "command": "vibetracker.stop",
-        "title": "VibeTracker: Stop Tracking"
+        "command": "ghostcommit.stop",
+        "title": "ghostcommit: Stop Tracking"
       },
       {
-        "command": "vibetracker.dashboard",
-        "title": "VibeTracker: Open Dashboard"
+        "command": "ghostcommit.dashboard",
+        "title": "ghostcommit: Open Dashboard"
       },
       {
-        "command": "vibetracker.setApiKey",
-        "title": "VibeTracker: Set Gemini API Key"
+        "command": "ghostcommit.setApiKey",
+        "title": "ghostcommit: Set Gemini API Key"
       },
       {
-        "command": "vibetracker.setTemplate",
-        "title": "VibeTracker: Select SVG Template"
+        "command": "ghostcommit.setTemplate",
+        "title": "ghostcommit: Select SVG Template"
       },
       {
-        "command": "vibetracker.status",
-        "title": "VibeTracker: Show Status"
+        "command": "ghostcommit.status",
+        "title": "ghostcommit: Show Status"
       },
       {
-        "command": "vibetracker.toggleBlacklist",
-        "title": "VibeTracker: Add Current Project to Blacklist"
+        "command": "ghostcommit.toggleBlacklist",
+        "title": "ghostcommit: Add Current Project to Blacklist"
       },
       {
-        "command": "vibetracker.setupReadme",
-        "title": "VibeTracker: Setup Profile README"
+        "command": "ghostcommit.setupReadme",
+        "title": "ghostcommit: Setup Profile README"
       },
       {
-        "command": "vibetracker.daily",
-        "title": "VibeTracker: Daily Summary"
+        "command": "ghostcommit.daily",
+        "title": "ghostcommit: Daily Summary"
       }
     ],
     "configuration": {
-      "title": "VibeTracker",
+      "title": "ghostcommit",
       "properties": {
-        "vibetracker.shadowRepoName": {
+        "ghostcommit.shadowRepoName": {
           "type": "string",
-          "default": "vibetracker-logs",
+          "default": "ghostcommit-logs",
           "description": "Name of the private shadow repository for activity logs"
         },
-        "vibetracker.flushInterval": {
+        "ghostcommit.flushInterval": {
           "type": "number",
           "default": 30,
           "description": "Minutes of inactivity before auto-committing session data"
         },
-        "vibetracker.changeThreshold": {
+        "ghostcommit.changeThreshold": {
           "type": "number",
           "default": 10,
           "description": "Number of file changes (saves, AI writes, file creates) before auto-committing"
         },
-        "vibetracker.autoStart": {
+        "ghostcommit.autoStart": {
           "type": "boolean",
           "default": true,
           "description": "Start tracking automatically when VS Code opens"
         },
-        "vibetracker.commitMode": {
+        "ghostcommit.commitMode": {
           "type": "string",
           "default": "hybrid",
-          "enum": ["hybrid", "auto", "generic"],
+          "enum": [
+            "hybrid",
+            "auto",
+            "generic"
+          ],
           "enumDescriptions": [
             "AI suggests, you Accept/Edit/Generic at commit time",
             "AI generates summary, commits silently",
-            "No AI, generic messages like 'Coding session · N files'"
+            "No AI, generic messages like 'Coding session Â· N files'"
           ],
           "description": "How commit messages are generated"
         },
-        "vibetracker.autoPush": {
+        "ghostcommit.autoPush": {
           "type": "boolean",
           "default": true,
           "description": "Push profile README updates automatically without asking"
         },
-        "vibetracker.projectBlacklist": {
+        "ghostcommit.projectBlacklist": {
           "type": "array",
           "items": {
             "type": "string"
@@ -102,7 +106,7 @@
           "default": [],
           "description": "Full paths of project folders to obfuscate in shadow commits (ex: D:\\Projects\\Secret). Activity still tracked, but project name hidden as [private]"
         },
-        "vibetracker.template": {
+        "ghostcommit.template": {
           "type": "string",
           "default": "artistic",
           "enum": [

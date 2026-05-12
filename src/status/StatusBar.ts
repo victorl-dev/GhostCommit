@@ -8,7 +8,7 @@ export class StatusBarManager {
 
   constructor() {
     this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-    this.item.command = 'vibetracker.dashboard';
+    this.item.command = 'ghostcommit.dashboard';
   }
 
   show() {
@@ -38,12 +38,12 @@ export class StatusBarManager {
 
   private updateDisplay() {
     if (this.tracking) {
-      this.item.text = `$(graph) VibeTracker: ${this.changeCount} changes`;
-      this.item.tooltip = `VibeTracker — tracking ${this.elapsed()}\n${this.changeCount} file change(s) this session\nClick to open Dashboard`;
+      this.item.text = `$(graph) GhostCommit: ${this.changeCount} changes`;
+      this.item.tooltip = `ghostcommit — tracking ${this.elapsed()}\n${this.changeCount} file change(s) this session\nClick to open Dashboard`;
       this.item.backgroundColor = undefined;
     } else {
-      this.item.text = '$(circle-slash) VibeTracker: paused';
-      this.item.tooltip = 'Tracking paused\nClick VibeTracker: Start or open Dashboard';
+      this.item.text = '$(circle-slash) GhostCommit: paused';
+      this.item.tooltip = 'Tracking paused\nClick GhostCommit: Start or open Dashboard';
       this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
     }
   }

@@ -23,7 +23,7 @@ export class SVGGenerator {
   };
 
   constructor(context: vscode.ExtensionContext) {
-    this.template = vscode.workspace.getConfiguration('vibetracker').get('template', 'artistic');
+    this.template = vscode.workspace.getConfiguration('ghostcommit').get('template', 'artistic');
   }
 
   setTemplate(name: string) {
@@ -136,7 +136,7 @@ export class SVGGenerator {
       <text x="30" y="45" fill="#00cc00" font-family="monospace" font-size="10">> ${sessions} sessions | ${totalSaves} files | ${totalLines} lines</text>
       ${bars}
       <text x="30" y="285" fill="#33ff33" font-family="monospace" font-size="8" opacity="0.7">> Last commit: ${this.esc(lastSummary || 'N/A')}</text>
-      <text x="${w - 170}" y="285" fill="#33ff33" font-family="monospace" font-size="8" opacity="0.5">[VibeTracker v0.1]</text>
+      <text x="${w - 170}" y="285" fill="#33ff33" font-family="monospace" font-size="8" opacity="0.5">[GhostCommit v0.1]</text>
     </svg>`;
   }
 }
