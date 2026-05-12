@@ -15,12 +15,11 @@ export class FileMonitor {
   private disposables: vscode.Disposable[] = [];
   private running = false;
   private lastActivityTime = Date.now();
-  private saveCount = 0;
+  private uniqueFiles = new Set<string>();
   private flushTimer: NodeJS.Timeout | undefined;
 
-  // Debounce: track recently seen URIs to avoid double-counting
-  // when both onDidSaveTextDocument AND fsWatcher fire for same file
-  private recentUris = new Map<string, number>();
+  // Track which files we've already added entries for in this session
+  private sessionFiles = new Set<string>();
 
   constructor(
     private cache: SessionCache,
@@ -92,47 +91,40 @@ export class FileMonitor {
   }
 
   // Debounce: skip if same URI was seen in the last 1000ms
-  private isDuplicate(uri: vscode.Uri): boolean {
-    const key = uri.fsPath.toLowerCase();
-    const now = Date.now();
-    const last = this.recentUris.get(key);
-    if (last && now - last < 1000) return true;
-    this.recentUris.set(key, now);
-    // Clean old entries periodically
-    if (this.recentUris.size > 100) {
-      for (const [k, t] of this.recentUris) {
-        if (now - t > 5000) this.recentUris.delete(k);
-      }
-    }
-    return false;
-  }
-
   private onFileChange(uri: vscode.Uri, source: string) {
     if (!this.running) return;
     if (uri.scheme !== 'file') return;
     if (!this.isTrackedExt(uri)) return;
-    if (this.isDuplicate(uri)) return;
 
-    this.lastActivityTime = Date.now();
-    this.saveCount++;
+    const fileKey = uri.fsPath.toLowerCase();
 
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
-    const projectName = workspaceFolder ? path.basename(workspaceFolder.uri.fsPath) : 'unknown';
-    const { hidden: isHidden } = this.isBlacklisted(uri);
+    // Only count unique files per session
+    if (!this.uniqueFiles.has(fileKey)) {
+      this.uniqueFiles.add(fileKey);
+      this.lastActivityTime = Date.now();
 
-    const entry: SessionEntry = {
-      timestamp: new Date().toISOString(),
-      fileExt: path.extname(uri.fsPath),
-      linesAdded: 1,
-      linesRemoved: 0,
-      projectName: isHidden ? OBFUSCATED_NAME : projectName,
-      fileName: isHidden ? '[hidden]' : path.basename(uri.fsPath),
-      hidden: isHidden
-    };
+      const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+      const projectName = workspaceFolder ? path.basename(workspaceFolder.uri.fsPath) : 'unknown';
+      const { hidden: isHidden } = this.isBlacklisted(uri);
 
-    this.cache.addEntry(entry);
-    this.statusBar.setChangeCount(this.saveCount);
-    this.checkFlushConditions();
+      // Only add a cache entry once per file per session
+      if (!this.sessionFiles.has(fileKey)) {
+        this.sessionFiles.add(fileKey);
+        const entry: SessionEntry = {
+          timestamp: new Date().toISOString(),
+          fileExt: path.extname(uri.fsPath),
+          linesAdded: 1,
+          linesRemoved: 0,
+          projectName: isHidden ? OBFUSCATED_NAME : projectName,
+          fileName: isHidden ? '[hidden]' : path.basename(uri.fsPath),
+          hidden: isHidden
+        };
+        this.cache.addEntry(entry);
+      }
+
+      this.statusBar.setChangeCount(this.uniqueFiles.size);
+      this.checkFlushConditions();
+    }
   }
 
   private checkFlushConditions() {
@@ -140,13 +132,13 @@ export class FileMonitor {
     const threshold = config.get<number>('changeThreshold', 10);
     const idleMinutes = config.get<number>('flushInterval', 30);
 
-    if (this.saveCount >= threshold) {
+    if (this.uniqueFiles.size >= threshold) {
       this.flush();
       return;
     }
 
     const elapsed = (Date.now() - this.lastActivityTime) / 1000 / 60;
-    if (elapsed >= idleMinutes && this.saveCount > 0) {
+    if (elapsed >= idleMinutes && this.uniqueFiles.size > 0) {
       this.flush();
     }
   }
@@ -156,7 +148,8 @@ export class FileMonitor {
     if (!session || session.entries.length === 0) return;
 
     this.clearFlushTimer();
-    this.saveCount = 0;
+    this.uniqueFiles.clear();
+    this.sessionFiles.clear();
 
     try {
       const aiSummary = await this.ai.generateSummary(session.entries);
