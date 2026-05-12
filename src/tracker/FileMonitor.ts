@@ -131,7 +131,7 @@ export class FileMonitor {
     };
 
     this.cache.addEntry(entry);
-    this.statusBar.updateText(`${this.saveCount} changes${isHidden ? ' 🔒' : ''}`);
+    this.statusBar.setChangeCount(this.saveCount);
     this.checkFlushConditions();
   }
 
