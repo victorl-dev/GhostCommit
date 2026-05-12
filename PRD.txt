@@ -1,0 +1,94 @@
+'# VibeTracker
+
+## 🚀 PRD: VibeTracker Extension (Vibe Coding Shadow Logger)
+
+### 1. Visão Geral
+
+O **VibeTracker** é uma extensão para VS Code projetada para desenvolvedores que praticam o "vibe coding" e desejam que seu esforço seja refletido no GitHub, mesmo trabalhando em repositórios privados ou locais. A ferramenta automatiza o registro de atividade e atualiza o perfil do usuário com métricas visuais estilizadas, sem expor código sensível.
+
+### 2. Objetivos Principais
+
+- **Visibilidade de Trabalho:** Garantir que o gráfico de contribuições do GitHub reflita a atividade real diária.
+- **Privacidade Total:** Utilizar IA para sanitizar metadados, garantindo que a lógica de negócios e segredos não saiam da máquina do usuário.
+- **Autonomia:** Eliminar a necessidade de servidores externos, VPS ou GitHub Actions, centralizando toda a lógica na própria extensão.
+- **Estética Premium:** Integrar métricas visuais (estilo "desenhado à mão") diretamente no README do perfil.
+
+### 3. Stack Tecnológica
+
+- **Linguagem/Runtime:** TypeScript e Node.js (Ambiente nativo de extensões do VS Code).
+- **Autenticação:** GitHub Authentication Provider (API nativa do VS Code).
+- **Processamento de IA:** Gemini API ou OpenRouter (via chamadas seguras de API).
+- **Geração Visual:** Rough.js ou bibliotecas similares para geração de SVGs com estética "hand-drawn".
+- **Versionamento:** GitHub REST API para manipulação direta de arquivos no repositório.
+
+---
+
+### 4. Funcionalidades Core
+
+### 4.1. Autenticação e Setup "One-Click"
+
+- O login é realizado através de um popup nativo do VS Code que solicita acesso ao GitHub do usuário.
+- A extensão identifica automaticamente o repositório de perfil (`username/username`) e permite criar/configurar um "Shadow Repo" para os logs de atividade.
+
+### 4.2. Monitoramento e Sanitização (Shadow Tracking)
+
+- **Gatilho:** A extensão monitora o salvamento de arquivos (`onDidSaveTextDocument`) nos diretórios de trabalho configurados.
+- **Processamento:** Captura apenas metadados (extensão do arquivo, quantidade de linhas alteradas, tempo de foco e contexto geral da pasta).
+- **IA Builder:** Envia esses dados para uma IA que gera um resumo curto e profissional (ex: "Refinando lógica de automação de pagamentos").
+
+### 4.3. Atualização Direta do Perfil (Direct Injector)
+
+- **Shadow Commits:** Realiza commits automáticos no repositório de logs para preencher o gráfico de contribuições.
+- **README Update:** A extensão baixa o `README.md` do perfil, localiza as tags de comentário (`<!-- VIBE_START -->`) e injeta as novas métricas e textos.
+- **SVG Dinâmico:** Gera um arquivo `.svg` estilizado localmente, faz o upload para o GitHub e atualiza a referência na imagem do perfil.
+
+---
+
+### 5. Fluxo do Usuário (User Flow)
+
+1. **Instalação:** O usuário baixa a extensão no VS Code.
+2. **Autorização:** Faz o login seguro com o GitHub via popup.
+3. **Configuração Inicial:** Define o repositório de logs e o estilo visual desejado (ex: "Hand-drawn charts").
+4. **Codificação:** O usuário programa normalmente ("vibe coding").
+5. **Automação Silenciosa:** Periodicamente, a extensão processa as mudanças, gera a imagem SVG e atualiza o README do perfil de forma autônoma.
+
+---
+
+### 6. Segurança e Privacidade
+
+- **Secrets Storage:** Chaves de API e tokens OAuth são armazenados no `vscode.secrets`, o cofre criptografado do editor.
+- **Data Isolation:** O conteúdo real do código fonte nunca é enviado para a IA ou para o repositório público de métricas; apenas descrições genéricas geradas localmente são publicadas.
+
+### 7. Diferencial de Portfólio para Victor Lobato
+
+Este projeto demonstra competência em:
+
+- Desenvolvimento de ferramentas para desenvolvedores (DevTools).
+- Integração avançada com APIs (GitHub e IA).
+- Manipulação programática de SVGs e estética de UI customizada.
+- Criação de produtos independentes ("bolso") sem dependência de infraestrutura complexa como VPS.
+
+**8. Persistência e Estrutura de Dados**
+Para garantir que nenhum progresso de "vibe coding" seja perdido, o foco será a **persistência local resiliente**:
+• **Cache de Sessão:** A extensão armazenará as métricas brutas (arquivos alterados, tempo por linguagem) em um arquivo JSON local oculto dentro do `ExtensionContext.globalStoragePath`.
+• **Sincronização Assíncrona:** Os dados só são "comitados" no GitHub após a validação da IA, mas o histórico permanece na máquina do usuário. Isso permite que, mesmo sem internet, a atividade seja acumulada para um "bulk upload" posterior.
+• **Integridade:** O banco de dados local (SQLite ou JSON estruturado) manterá um registro do que já foi enviado para evitar a duplicidade de métricas no README.
+**9. Galeria de Estilos (Templates de Design)**
+A extensão oferecerá **3 templates distintos** para o gráfico/resumo injetado, permitindo que o usuário escolha o que melhor se adapta à estética do seu perfil:**TemplateEstilo VisualPúblico-AlvoArtistic (Hand-drawn)**Gráficos gerados com `Rough.js`, simulando traços à mão e hachuras.Desenvolvedores que buscam um visual criativo e autoral.**Cyber-Minimalist**Linhas finas, ícones vetoriais modernos e tipografia limpa em SVG.Perfis focados em SaaS, clean code e design moderno.**Retro Terminal**Estética em ASCII art ou blocos de pixel art simulando um console antigo.Desenvolvedores entusiastas de sistemas low-level e cultura geek/retro.
+**10. Protocolo de Onboarding e Inicialização do README**
+A configuração do arquivo `README.md` é um ponto sensível de segurança e experiência do usuário (UX). A abordagem será **Híbrida e Segura**:
+**10.1. Verificação Automática**
+Ao iniciar, a extensão verifica via API se o repositório de perfil possui um `README.md`.
+• **Caso não exista:** A extensão emitirá um aviso. **Por segurança**, é preferível que o usuário crie o arquivo manualmente (para garantir que ele entenda o que está sendo publicado). No entanto, a extensão oferecerá um botão **"Gerar README Base"** que cria um arquivo padrão já com os marcadores.
+• **Caso exista, mas sem marcadores:** A extensão buscará pelas tags `<!-- VIBE_START -->` e `<!-- VIBE_END -->`. Se não encontrá-las, oferecerá para injetá-las automaticamente no final do arquivo.
+**10.2. Segurança e Controle do Usuário**
+• **Injeção Automática vs. Manual:** Injetar código automaticamente é seguro desde que o escopo seja limitado apenas ao conteúdo dentro dos comentários HTML. A extensão **nunca** sobrescreverá o conteúdo que estiver fora dessas tags.
+• **Modo Preview:** Antes de realizar o primeiro commit no perfil, a extensão abrirá uma aba lateral no VS Code mostrando exatamente como o README ficará. O "Push" final só acontece após a confirmação visual do usuário.
+• **Permissions:** O uso de marcadores manuais é a solução mais segura. Instruiremos o usuário (via notificação amigável) a colocá-los onde preferir, dando a ele total controle sobre o layout do seu perfil.
+
+### **11. Resumo de Segurança do OnboardingDiretriz:** A automação deve facilitar, mas nunca substituir o consentimento.
+
+• **Criação de Arquivo:** Sugerida (via botão), nunca compulsória.
+• **Inserção de Marcadores:** Automática sob demanda, com backup do conteúdo original em cache local antes da alteração.
+• **Transparência:** Todo commit realizado pela extensão levará a flag `[VibeTracker Auto-Update]` para que o usuário possa rastrear as alterações no histórico do Git.'
+​
