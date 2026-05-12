@@ -6,6 +6,8 @@ import { ShadowRepo } from '../github/ShadowRepo';
 import { ProfileUpdater } from '../github/ProfileUpdater';
 import { StatusBarManager } from '../status/StatusBar';
 
+const OBFUSCATED_NAME = '[private]';
+
 export class FileMonitor {
   private disposable: vscode.Disposable | undefined;
   private running = false;
@@ -42,6 +44,12 @@ export class FileMonitor {
     return this.running;
   }
 
+  private isBlacklisted(projectName: string): boolean {
+    const config = vscode.workspace.getConfiguration('vibetracker');
+    const blacklist = config.get<string[]>('projectBlacklist', []);
+    return blacklist.some(b => projectName.toLowerCase() === b.toLowerCase());
+  }
+
   private onSave(doc: vscode.TextDocument) {
     if (!this.running) return;
     if (doc.uri.scheme !== 'file') return;
@@ -52,18 +60,20 @@ export class FileMonitor {
     const stats = this.getLineStats(doc);
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(doc.uri);
     const projectName = workspaceFolder ? path.basename(workspaceFolder.uri.fsPath) : 'unknown';
+    const isHidden = this.isBlacklisted(projectName);
 
     const entry: SessionEntry = {
       timestamp: new Date().toISOString(),
       fileExt: path.extname(doc.fileName),
       linesAdded: stats.added,
       linesRemoved: stats.removed,
-      projectName,
-      fileName: path.basename(doc.fileName)
+      projectName: isHidden ? OBFUSCATED_NAME : projectName,
+      fileName: isHidden ? '[hidden]' : path.basename(doc.fileName),
+      hidden: isHidden
     };
 
     this.cache.addEntry(entry);
-    this.statusBar.updateText(`${this.saveCount} saves`);
+    this.statusBar.updateText(`${this.saveCount} saves${isHidden ? ' 🔒' : ''}`);
     this.checkFlushConditions();
   }
 

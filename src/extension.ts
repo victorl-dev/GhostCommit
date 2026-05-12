@@ -25,7 +25,11 @@ export function activate(context: vscode.ExtensionContext) {
   statusBar.show();
 
   fileMonitor = new FileMonitor(cache, ai, shadowRepo, profileUpdater, statusBar);
-  fileMonitor.start();
+
+  const config = vscode.workspace.getConfiguration('vibetracker');
+  if (config.get<boolean>('autoStart', true)) {
+    fileMonitor.start();
+  }
 
   context.subscriptions.push(
     vscode.commands.registerCommand('vibetracker.start', () => {
@@ -61,8 +65,8 @@ export function activate(context: vscode.ExtensionContext) {
         { placeHolder: 'Select a template for your profile SVG' }
       );
       if (selected) {
-        const config = vscode.workspace.getConfiguration('vibetracker');
-        await config.update('template', selected.id, vscode.ConfigurationTarget.Global);
+        const cf = vscode.workspace.getConfiguration('vibetracker');
+        await cf.update('template', selected.id, vscode.ConfigurationTarget.Global);
         vscode.window.showInformationMessage(`VibeTracker: Template set to ${selected.label}`);
       }
     }),
@@ -70,12 +74,45 @@ export function activate(context: vscode.ExtensionContext) {
       const isTracking = fileMonitor?.isRunning() ?? false;
       const sessionCount = cache.getSessionCount();
       const lastCommit = shadowRepo.getLastCommitInfo();
+      const blacklist = vscode.workspace.getConfiguration('vibetracker').get<string[]>('projectBlacklist', []);
       const message = [
         `Status: ${isTracking ? '$(check) Tracking' : '$(circle-slash) Paused'}`,
         `Sessions tracked: ${sessionCount}`,
-        lastCommit ? `Last commit: ${lastCommit}` : 'No commits yet'
+        lastCommit ? `Last commit: ${lastCommit}` : 'No commits yet',
+        `Blacklisted projects: ${blacklist.length > 0 ? blacklist.join(', ') : 'none'}`
       ].join('\n');
       vscode.window.showInformationMessage(message);
+    }),
+    vscode.commands.registerCommand('vibetracker.toggleBlacklist', async () => {
+      const wsFolders = vscode.workspace.workspaceFolders;
+      if (!wsFolders || wsFolders.length === 0) {
+        vscode.window.showWarningMessage('VibeTracker: No workspace folders open.');
+        return;
+      }
+      const cf = vscode.workspace.getConfiguration('vibetracker');
+      const blacklist = cf.get<string[]>('projectBlacklist', []);
+      const folderNames = wsFolders.map(f => ({ label: f.name, description: f.uri.fsPath }));
+
+      const selected = await vscode.window.showQuickPick(folderNames, {
+        placeHolder: 'Select project to toggle blacklist',
+        canPickMany: true
+      });
+      if (!selected) return;
+
+      const newBlacklist = [...blacklist];
+      for (const s of selected) {
+        const idx = newBlacklist.indexOf(s.label);
+        if (idx >= 0) {
+          newBlacklist.splice(idx, 1);
+        } else {
+          newBlacklist.push(s.label);
+        }
+      }
+
+      await cf.update('projectBlacklist', newBlacklist, vscode.ConfigurationTarget.Global);
+      vscode.window.showInformationMessage(
+        `VibeTracker: Blacklist updated (${newBlacklist.length} project(s) hidden)`
+      );
     })
   );
 
@@ -83,6 +120,11 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration('vibetracker.template')) {
         svgGen.setTemplate(vscode.workspace.getConfiguration('vibetracker').get('template', 'artistic'));
+      }
+      if (e.affectsConfiguration('vibetracker.autoStart')) {
+        const auto = vscode.workspace.getConfiguration('vibetracker').get<boolean>('autoStart', true);
+        if (auto) fileMonitor?.start();
+        else fileMonitor?.stop();
       }
     })
   );

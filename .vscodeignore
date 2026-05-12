@@ -5,5 +5,8 @@ node_modules/**
 tsconfig.json
 .eslintrc.json
 .gitignore
+PRD.txt
 **/*.ts
 **/*.map
+package-lock.json
+tsconfig.json

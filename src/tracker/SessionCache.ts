@@ -9,6 +9,7 @@ export interface SessionEntry {
   linesRemoved: number;
   projectName: string;
   fileName: string;
+  hidden?: boolean;
 }
 
 export interface SessionData {
