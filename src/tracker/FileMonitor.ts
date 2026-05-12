@@ -118,14 +118,15 @@ export class FileMonitor {
 
       try {
         await this.shadowRepo.commitActivity(summary, session.entries.length);
-      } catch {
-        // shadow repo not configured yet
+      } catch (err: any) {
+        console.error('VibeTracker: Shadow commit failed', err?.message);
       }
 
       try {
         await this.profileUpdater.update();
-      } catch {
-        // profile not configured yet
+      } catch (err: any) {
+        const msg = `VibeTracker: Profile update failed - ${err?.message || err}`;
+        console.error(msg);
       }
 
       this.cache.startNewSession();
