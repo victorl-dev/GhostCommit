@@ -7,13 +7,18 @@ import { ProfileUpdater } from '../github/ProfileUpdater';
 import { StatusBarManager } from '../status/StatusBar';
 
 const OBFUSCATED_NAME = '[private]';
+const TRACKED_EXTS = new Set(['.ts','.tsx','.js','.jsx','.py','.rs','.go','.java','.kt','.swift','.dart','.rb','.php','.c','.cpp','.h','.hpp','.cs','.fs','.vue','.svelte','.css','.scss','.less','.html','.json','.yaml','.yml','.toml','.md','.sql','.graphql','.prisma']);
 
 export class FileMonitor {
-  private disposable: vscode.Disposable | undefined;
+  private disposables: vscode.Disposable[] = [];
   private running = false;
   private lastActivityTime = Date.now();
   private saveCount = 0;
   private flushTimer: NodeJS.Timeout | undefined;
+
+  // Debounce: track recently seen URIs to avoid double-counting
+  // when both onDidSaveTextDocument AND fsWatcher fire for same file
+  private recentUris = new Map<string, number>();
 
   constructor(
     private cache: SessionCache,
@@ -27,15 +32,37 @@ export class FileMonitor {
     if (this.running) return;
     this.running = true;
     this.cache.startNewSession();
-    this.disposable = vscode.workspace.onDidSaveTextDocument(doc => this.onSave(doc));
+
+    // 1. Manual saves (Ctrl+S)
+    this.disposables.push(
+      vscode.workspace.onDidSaveTextDocument(doc => this.onFileChange(doc.uri, 'save'))
+    );
+
+    // 2. File system changes from AI agents / external tools
+    const watcher = vscode.workspace.createFileSystemWatcher('**/*');
+    this.disposables.push(watcher);
+    this.disposables.push(
+      watcher.onDidChange(uri => this.onFileChange(uri, 'fschange')),
+      watcher.onDidCreate(uri => this.onFileChange(uri, 'create'))
+    );
+
+    // 3. Workspace file creation events
+    this.disposables.push(
+      vscode.workspace.onDidCreateFiles(event => {
+        for (const uri of event.files) {
+          this.onFileChange(uri, 'wscreate');
+        }
+      })
+    );
+
     this.startFlushTimer();
     this.statusBar.setTracking(true);
   }
 
   stop() {
     this.running = false;
-    this.disposable?.dispose();
-    this.disposable = undefined;
+    for (const d of this.disposables) d.dispose();
+    this.disposables = [];
     this.clearFlushTimer();
     this.statusBar.setTracking(false);
   }
@@ -57,41 +84,58 @@ export class FileMonitor {
     return { hidden: false };
   }
 
-  private onSave(doc: vscode.TextDocument) {
+  private isTrackedExt(uri: vscode.Uri): boolean {
+    const ext = path.extname(uri.fsPath).toLowerCase();
+    return TRACKED_EXTS.has(ext);
+  }
+
+  // Debounce: skip if same URI was seen in the last 1000ms
+  private isDuplicate(uri: vscode.Uri): boolean {
+    const key = uri.fsPath.toLowerCase();
+    const now = Date.now();
+    const last = this.recentUris.get(key);
+    if (last && now - last < 1000) return true;
+    this.recentUris.set(key, now);
+    // Clean old entries periodically
+    if (this.recentUris.size > 100) {
+      for (const [k, t] of this.recentUris) {
+        if (now - t > 5000) this.recentUris.delete(k);
+      }
+    }
+    return false;
+  }
+
+  private onFileChange(uri: vscode.Uri, source: string) {
     if (!this.running) return;
-    if (doc.uri.scheme !== 'file') return;
+    if (uri.scheme !== 'file') return;
+    if (!this.isTrackedExt(uri)) return;
+    if (this.isDuplicate(uri)) return;
 
     this.lastActivityTime = Date.now();
     this.saveCount++;
 
-    const stats = this.getLineStats(doc);
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(doc.uri);
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
     const projectName = workspaceFolder ? path.basename(workspaceFolder.uri.fsPath) : 'unknown';
-    const { hidden: isHidden } = this.isBlacklisted(doc.uri);
+    const { hidden: isHidden } = this.isBlacklisted(uri);
 
     const entry: SessionEntry = {
       timestamp: new Date().toISOString(),
-      fileExt: path.extname(doc.fileName),
-      linesAdded: stats.added,
-      linesRemoved: stats.removed,
+      fileExt: path.extname(uri.fsPath),
+      linesAdded: 1,
+      linesRemoved: 0,
       projectName: isHidden ? OBFUSCATED_NAME : projectName,
-      fileName: isHidden ? '[hidden]' : path.basename(doc.fileName),
+      fileName: isHidden ? '[hidden]' : path.basename(uri.fsPath),
       hidden: isHidden
     };
 
     this.cache.addEntry(entry);
-    this.statusBar.updateText(`${this.saveCount} saves${isHidden ? ' 🔒' : ''}`);
+    this.statusBar.updateText(`${this.saveCount} changes${isHidden ? ' 🔒' : ''}`);
     this.checkFlushConditions();
-  }
-
-  private getLineStats(doc: vscode.TextDocument): { added: number; removed: number } {
-    const lineCount = doc.lineCount;
-    return { added: lineCount > 0 ? Math.floor(Math.random() * 10) + 1 : 0, removed: 0 };
   }
 
   private checkFlushConditions() {
     const config = vscode.workspace.getConfiguration('vibetracker');
-    const threshold = config.get<number>('savesThreshold', 50);
+    const threshold = config.get<number>('savesThreshold', 10);
     const idleMinutes = config.get<number>('flushInterval', 30);
 
     if (this.saveCount >= threshold) {
