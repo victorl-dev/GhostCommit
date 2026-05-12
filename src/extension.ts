@@ -24,7 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
     const shadowRepo = new ShadowRepo(auth);
     const svgGen = new SVGGenerator(context);
     const profileUpdater = new ProfileUpdater(auth, svgGen);
-    const webviewPanel = new WebviewPanel(context, cache, svgGen);
+    const webviewPanel = new WebviewPanel(context, cache);
 
     statusBar = new StatusBarManager();
     statusBar.show();
@@ -141,18 +141,6 @@ export function activate(context: vscode.ExtensionContext) {
         ].filter(Boolean).join('\n');
         vscode.window.showInformationMessage(msg);
         _output.appendLine(`Daily summary: ${today.saves} saves, ${today.lines} lines`);
-      }),
-      vscode.commands.registerCommand('vibetracker._setConfig', async (jsonArgs: any) => {
-        const args = typeof jsonArgs === 'string' ? JSON.parse(jsonArgs) : jsonArgs;
-        _output.appendLine(`[setConfig] args=${JSON.stringify(args)}`);
-        if (args && args.key && args.val !== undefined) {
-          const cf = vscode.workspace.getConfiguration('vibetracker');
-          await cf.update(args.key, args.val, vscode.ConfigurationTarget.Global);
-          _output.appendLine(`[setConfig] ${args.key}=${args.val} saved`);
-          if (args.key === 'savesThreshold' || args.key === 'flushInterval') {
-            webviewPanel.createOrShow();
-          }
-        }
       }),
       vscode.commands.registerCommand('vibetracker.testDashboard', () => {
         _output.appendLine('=== DASHBOARD DIAGNOSTIC ===');
