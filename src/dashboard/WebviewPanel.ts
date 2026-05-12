@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
 import { SessionCache } from '../tracker/SessionCache';
-import { SVGGenerator, ActivityStats } from '../svg/Generator';
+import { SVGGenerator } from '../svg/Generator';
 
 export class WebviewPanel {
-  public static readonly viewType = 'vibetracker.dashboard';
   private panel: vscode.WebviewPanel | undefined;
 
   constructor(
@@ -13,147 +12,162 @@ export class WebviewPanel {
   ) {}
 
   createOrShow() {
-    try {
-      if (this.panel) {
-        this.panel.reveal(vscode.ViewColumn.One);
-        this.updateContent();
-        return;
-      }
+    if (this.panel) {
+      this.panel.reveal(vscode.ViewColumn.One);
+      this.refresh();
+      return;
+    }
 
-      this.panel = vscode.window.createWebviewPanel(
-        WebviewPanel.viewType,
-        'VibeTracker Dashboard',
-        vscode.ViewColumn.One,
-        { enableScripts: true, retainContextWhenHidden: true, enableFindWidget: true }
-      );
+    this.panel = vscode.window.createWebviewPanel(
+      'vibetracker.dashboard',
+      'VibeTracker Dashboard',
+      vscode.ViewColumn.One,
+      { enableScripts: true }
+    );
 
-      this.panel.onDidDispose(() => { this.panel = undefined; });
-      this.panel.onDidChangeViewState(() => {
-        if (this.panel?.visible) this.updateContent();
-      });
-      this.panel.webview.onDidReceiveMessage(() => {}, undefined, this.context.subscriptions);
+    this.panel.onDidDispose(() => { this.panel = undefined; });
+    this.panel.webview.onDidReceiveMessage(msg => this.handleMessage(msg));
+    this.refresh();
+  }
 
-      this.updateContent();
-    } catch (err) {
-      vscode.window.showErrorMessage(`VibeTracker Dashboard error: ${err}`);
+  private refresh() {
+    if (this.panel) this.panel.webview.html = this.buildHtml();
+  }
+
+  private handleMessage(msg: any) {
+    const cf = vscode.workspace.getConfiguration('vibetracker');
+    if (msg.command === 'setThreshold') {
+      cf.update('savesThreshold', msg.value, vscode.ConfigurationTarget.Global);
+    } else if (msg.command === 'setInterval') {
+      cf.update('flushInterval', msg.value, vscode.ConfigurationTarget.Global);
+    } else if (msg.command === 'setTemplate') {
+      cf.update('template', msg.value, vscode.ConfigurationTarget.Global);
     }
   }
 
-  private updateContent() {
-    if (!this.panel) return;
-    const stats = this.getStats();
-    const total = this.cache.getTotalStats();
-    const today = this.cache.getTodayStats();
-    const recentSessions = this.cache.getRecentSessions(5);
-
-    const todayLangs = Object.entries(today.langs)
-      .map(([ext, n]) => `<tr><td>${ext || '?'}</td><td>${n}</td></tr>`).join('');
-
-    const totalLangs = Object.entries(stats.byLanguage)
-      .map(([ext, data]) => `<tr><td>${ext || '?'}</td><td>${data.saves}</td><td>${data.lines}</td></tr>`).join('');
-
-    const sessionRows = recentSessions.map(s => {
-      const date = new Date(s.startTime).toLocaleString();
-      return `<tr><td>${date}</td><td>${s.entries.length}</td><td>${this.esc(s.summary || 'pending...')}</td></tr>`;
-    }).join('');
-
-    const projects = today.projects.length > 0
-      ? today.projects.join(', ') : '—';
-    const hidden = today.hiddenProjects.length > 0
-      ? `<span style="color:#e94560">🔒 ${today.hiddenProjects.length} hidden</span>` : '';
-
-    this.panel.html = this.getHtml(total, today, todayLangs, totalLangs, sessionRows, projects, hidden);
+  private esc(s: string) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  private esc(s: string) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-
-  private getStats(): ActivityStats {
-    const byLang = this.cache.getActivityByLanguage();
+  private buildHtml(): string {
+    const t = this.cache.getTodayStats();
     const total = this.cache.getTotalStats();
-    const recent = this.cache.getRecentSessions(1);
-    return {
-      totalSaves: total.totalSaves,
-      totalLines: total.totalLines,
-      sessions: this.cache.getSessionCount(),
-      byLanguage: byLang,
-      lastSummary: recent[0]?.summary || 'No activity yet'
-    };
-  }
+    const recent = this.cache.getRecentSessions(5);
+    const allLang = this.cache.getActivityByLanguage();
+    const cfg = vscode.workspace.getConfiguration('vibetracker');
+    const threshold = cfg.get<number>('savesThreshold', 10);
+    const interval = cfg.get<number>('flushInterval', 30);
+    const template = cfg.get<string>('template', 'artistic');
 
-  private htmlHeader(): string {
-    const csp = this.panel?.webview.cspSource || 'https:';
+    const todayLangs = Object.entries(t.langs).map(([e, n]) =>
+      `<tr><td>${this.esc(e || '?')}</td><td>${n}</td></tr>`
+    ).join('');
+
+    const allLangs = Object.entries(allLang).map(([e, d]) =>
+      `<tr><td>${this.esc(e || '?')}</td><td>${d.saves}</td><td>${d.lines}</td></tr>`
+    ).join('');
+
+    const sessions = recent.map(s =>
+      `<tr><td>${new Date(s.startTime).toLocaleString()}</td><td>${s.entries.length}</td><td>${this.esc(s.summary || '-')}</td></tr>`
+    ).join('');
+
+    const projs = [...t.projects, ...t.hiddenProjects.map(() => '[private]')].join(', ') || '-';
+
+    const tmplOpts = ['artistic', 'cyber', 'retro'].map(tmpl =>
+      `<option value="${tmpl}"${tmpl === template ? ' selected' : ''}>${tmpl.charAt(0).toUpperCase() + tmpl.slice(1)}</option>`
+    ).join('');
+
     return `<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' ${csp}; img-src data: ${csp};">
   <title>VibeTracker Dashboard</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, system-ui, sans-serif; background: #0d1117; color: #c9d1d9; padding: 20px; }
-    h1 { font-size: 20px; font-weight: 700; color: #58a6ff; margin-bottom: 4px; }
-    .subtitle { color: #8b949e; font-size: 12px; margin-bottom: 20px; }
-    h2 { font-size: 13px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 10px; }
-    .today-section { background: #161b22; border: 1px solid #1f6feb; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-    .today-header { color: #58a6ff; font-size: 13px; font-weight: 600; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
-    .stat-card { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; text-align: center; }
-    .stat-value { font-size: 24px; font-weight: 700; color: #58a6ff; }
-    .stat-label { font-size: 10px; color: #8b949e; margin-top: 2px; text-transform: uppercase; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
-    th { text-align: left; padding: 6px 10px; border-bottom: 1px solid #30363d; color: #8b949e; font-weight: 600; font-size: 11px; }
-    td { padding: 6px 10px; border-bottom: 1px solid #21262d; }
-    tr:hover td { background: #161b22; }
-    .projects { font-size: 11px; color: #8b949e; margin-top: 8px; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-bottom: 12px; }
-    .badge.active { background: #1b4123; color: #3fb950; }
-    p.footer { color: #484f58; font-size: 10px; margin-top: 20px; }
-  </style>
 </head>
-<body>`;
-  }
+<body style="background:#0d1117;color:#c9d1d9;font-family:-apple-system,system-ui,sans-serif;padding:20px">
 
-  private htmlFooter(): string {
-    return `<p class="footer">VibeTracker v0.1 — Data stored locally</p>
+  <script>
+    const vscode = acquireVsCodeApi();
+    function update(k,v) { vscode.postMessage({command:k,value:v}); }
+  </script>
+
+  <h1 style="color:#58a6ff;font-size:20px;margin-bottom:4px">VibeTracker</h1>
+  <p style="color:#8b949e;font-size:12px;margin-bottom:20px">${new Date().toLocaleDateString('pt-BR')}</p>
+
+  <div style="background:#161b22;border:1px solid #1f6feb;border-radius:8px;padding:16px;margin-bottom:16px">
+    <h2 style="color:#58a6ff;font-size:13px;margin:0 0 12px 0;text-transform:uppercase">Today's Activity</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+      <div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#58a6ff">${t.saves}</div>
+        <div style="font-size:10px;color:#8b949e;text-transform:uppercase">Saves</div>
+      </div>
+      <div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#58a6ff">${t.lines}</div>
+        <div style="font-size:10px;color:#8b949e;text-transform:uppercase">Lines</div>
+      </div>
+      <div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#58a6ff">${t.projects.length + t.hiddenProjects.length}</div>
+        <div style="font-size:10px;color:#8b949e;text-transform:uppercase">Projects</div>
+      </div>
+    </div>
+    ${todayLangs ? '<table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="color:#8b949e;border-bottom:1px solid #30363d"><th style="text-align:left;padding:6px 10px">Language</th><th style="text-align:left;padding:6px 10px">Saves</th></tr>' + todayLangs + '</table>' : '<p style="color:#484f58">No activity today</p>'}
+    <p style="font-size:11px;color:#8b949e;margin-top:8px">Projects: ${this.esc(projs)}</p>
+  </div>
+
+  <h2 style="font-size:13px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">All Time</h2>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px">
+    <div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center">
+      <div style="font-size:24px;font-weight:700;color:#58a6ff">${total.totalSaves}</div>
+      <div style="font-size:10px;color:#8b949e;text-transform:uppercase">Total Saves</div>
+    </div>
+    <div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center">
+      <div style="font-size:24px;font-weight:700;color:#58a6ff">${total.totalLines}</div>
+      <div style="font-size:10px;color:#8b949e;text-transform:uppercase">Total Lines</div>
+    </div>
+  </div>
+
+  <h2 style="font-size:13px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Languages</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <tr style="color:#8b949e;border-bottom:1px solid #30363d"><th style="text-align:left;padding:6px 10px">Language</th><th style="text-align:left;padding:6px 10px">Saves</th><th style="text-align:left;padding:6px 10px">Lines</th></tr>
+    ${allLangs}
+  </table>
+
+  <h2 style="font-size:13px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Settings</h2>
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;margin-bottom:16px">
+
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;color:#8b949e">Auto-commit threshold (saves)</label>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <button onclick="update('setThreshold',${Math.max(1,threshold-1)})" style="background:#30363d;color:#c9d1d9;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:14px">−</button>
+        <span style="font-size:18px;font-weight:700;color:#58a6ff;min-width:30px;text-align:center">${threshold}</span>
+        <button onclick="update('setThreshold',${threshold+1})" style="background:#30363d;color:#c9d1d9;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:14px">+</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;color:#8b949e">Idle flush interval (minutes)</label>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <button onclick="update('setInterval',${Math.max(1,interval-5)})" style="background:#30363d;color:#c9d1d9;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:14px">−</button>
+        <span style="font-size:18px;font-weight:700;color:#58a6ff;min-width:30px;text-align:center">${interval}</span>
+        <button onclick="update('setInterval',${interval+5})" style="background:#30363d;color:#c9d1d9;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:14px">+</button>
+      </div>
+    </div>
+
+    <div>
+      <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:4px">SVG Template</label>
+      <select onchange="update('setTemplate',this.value)" style="background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:6px 8px;font-size:12px;width:100%">
+        ${tmplOpts}
+      </select>
+    </div>
+  </div>
+
+  <h2 style="font-size:13px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Recent Sessions</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <tr style="color:#8b949e;border-bottom:1px solid #30363d"><th style="text-align:left;padding:6px 10px">Time</th><th style="text-align:left;padding:6px 10px">Files</th><th style="text-align:left;padding:6px 10px">Summary</th></tr>
+    ${sessions}
+  </table>
+
+  <p style="color:#484f58;font-size:10px;margin-top:20px">VibeTracker v0.1 — Data stored locally</p>
 </body>
 </html>`;
-  }
-
-  private getHtml(
-    total: { totalSaves: number; totalLines: number },
-    today: { saves: number; lines: number; langs: Record<string, number>; projects: string[]; hiddenProjects: string[] },
-    todayLangs: string, totalLangs: string, sessionRows: string,
-    projects: string, hidden: string
-  ) {
-    const body = `
-  <h1>VibeTracker</h1>
-  <div class="subtitle">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
-  <span class="badge active">● Live — tracking now</span>
-
-  <div class="today-section">
-    <div class="today-header">Today's Activity</div>
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-value">${today.saves}</div><div class="stat-label">Files Saved</div></div>
-      <div class="stat-card"><div class="stat-value">${today.lines}</div><div class="stat-label">Lines Changed</div></div>
-      <div class="stat-card"><div class="stat-value">${today.projects.length + today.hiddenProjects.length}</div><div class="stat-label">Projects</div></div>
-    </div>
-    ${todayLangs ? '<table><thead><tr><th>Language</th><th>Saves</th></tr></thead><tbody>' + todayLangs + '</tbody></table>' : '<p>No activity today yet</p>'}
-    <div class="projects">Projects: ${projects} ${hidden}</div>
-  </div>
-
-  <h2>All Time</h2>
-  <div class="stats-grid">
-    <div class="stat-card"><div class="stat-value">${total.totalSaves}</div><div class="stat-label">Files Saved</div></div>
-    <div class="stat-card"><div class="stat-value">${total.totalLines}</div><div class="stat-label">Lines Changed</div></div>
-  </div>
-
-  <h2>Languages (All Time)</h2>
-  <table><thead><tr><th>Language</th><th>Saves</th><th>Lines</th></tr></thead><tbody>${totalLangs}</tbody></table>
-
-  <h2>Recent Sessions</h2>
-  <table><thead><tr><th>Time</th><th>Files</th><th>Summary</th></tr></thead><tbody>${sessionRows}</tbody></table>`;
-
-    return this.htmlHeader() + body + this.htmlFooter();
   }
 }

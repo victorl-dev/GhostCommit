@@ -52,6 +52,10 @@
       {
         "command": "vibetracker.daily",
         "title": "VibeTracker: Daily Summary"
+      },
+      {
+        "command": "vibetracker.testDashboard",
+        "title": "VibeTracker: Test Dashboard (Diagnostic)"
       }
     ],
     "configuration": {
@@ -69,7 +73,7 @@
         },
         "vibetracker.savesThreshold": {
           "type": "number",
-          "default": 50,
+          "default": 10,
           "description": "Number of file saves before auto-committing"
         },
         "vibetracker.autoStart": {

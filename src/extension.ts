@@ -142,6 +142,23 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(msg);
         _output.appendLine(`Daily summary: ${today.saves} saves, ${today.lines} lines`);
       }),
+      vscode.commands.registerCommand('vibetracker.testDashboard', () => {
+        _output.appendLine('=== DASHBOARD DIAGNOSTIC ===');
+        try {
+          const panel = vscode.window.createWebviewPanel(
+            'vibetracker.test', 'VibeTracker Test',
+            vscode.ViewColumn.One,
+            { enableScripts: true }
+          );
+          panel.webview.html = '<!DOCTYPE html><html><body><h1 style="color:green">VibeTracker Test OK</h1><p>If you see this, webviews work.</p></body></html>';
+          _output.appendLine('Test webview created successfully');
+          _output.appendLine(`cspSource: ${panel.webview.cspSource}`);
+          vscode.window.showInformationMessage('VibeTracker: Test panel opened');
+        } catch (err) {
+          _output.appendLine(`Test webview FAILED: ${err}`);
+          vscode.window.showErrorMessage(`VibeTracker webview error: ${err}`);
+        }
+      }),
       vscode.commands.registerCommand('vibetracker.setupReadme', async () => {
         try {
           await auth.login();
