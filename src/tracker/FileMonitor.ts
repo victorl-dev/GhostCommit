@@ -44,10 +44,17 @@ export class FileMonitor {
     return this.running;
   }
 
-  private isBlacklisted(projectName: string): boolean {
+  private isBlacklisted(docUri: vscode.Uri): { hidden: boolean; matchedPath?: string } {
     const config = vscode.workspace.getConfiguration('vibetracker');
     const blacklist = config.get<string[]>('projectBlacklist', []);
-    return blacklist.some(b => projectName.toLowerCase() === b.toLowerCase());
+    const filePath = docUri.fsPath.toLowerCase();
+    for (const bp of blacklist) {
+      const normalized = bp.replace(/\\/g, '/').toLowerCase();
+      if (filePath.includes(normalized)) {
+        return { hidden: true, matchedPath: bp };
+      }
+    }
+    return { hidden: false };
   }
 
   private onSave(doc: vscode.TextDocument) {
@@ -60,7 +67,7 @@ export class FileMonitor {
     const stats = this.getLineStats(doc);
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(doc.uri);
     const projectName = workspaceFolder ? path.basename(workspaceFolder.uri.fsPath) : 'unknown';
-    const isHidden = this.isBlacklisted(projectName);
+    const { hidden: isHidden } = this.isBlacklisted(doc.uri);
 
     const entry: SessionEntry = {
       timestamp: new Date().toISOString(),

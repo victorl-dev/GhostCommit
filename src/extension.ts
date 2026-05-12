@@ -91,27 +91,37 @@ export function activate(context: vscode.ExtensionContext) {
       }
       const cf = vscode.workspace.getConfiguration('vibetracker');
       const blacklist = cf.get<string[]>('projectBlacklist', []);
-      const folderNames = wsFolders.map(f => ({ label: f.name, description: f.uri.fsPath }));
 
-      const selected = await vscode.window.showQuickPick(folderNames, {
-        placeHolder: 'Select project to toggle blacklist',
+      const norm = (p: string) => p.replace(/\\/g, '/').replace(/\/+$/, '');
+      const alreadyBlacklisted = (path: string) =>
+        blacklist.some(b => norm(b) === norm(path));
+
+      const folderItems = wsFolders.map(f => ({
+        label: f.name,
+        description: f.uri.fsPath,
+        picked: alreadyBlacklisted(f.uri.fsPath)
+      }));
+
+      const selected = await vscode.window.showQuickPick(folderItems, {
+        placeHolder: 'Toggle projects to obfuscate (path-based)',
         canPickMany: true
       });
       if (!selected) return;
 
-      const newBlacklist = [...blacklist];
+      let newBlacklist = [...blacklist];
       for (const s of selected) {
-        const idx = newBlacklist.indexOf(s.label);
+        const pathNorm = norm(s.description);
+        const idx = newBlacklist.findIndex(b => norm(b) === pathNorm);
         if (idx >= 0) {
           newBlacklist.splice(idx, 1);
         } else {
-          newBlacklist.push(s.label);
+          newBlacklist.push(s.description);
         }
       }
 
       await cf.update('projectBlacklist', newBlacklist, vscode.ConfigurationTarget.Global);
       vscode.window.showInformationMessage(
-        `VibeTracker: Blacklist updated (${newBlacklist.length} project(s) hidden)`
+        `VibeTracker: Blacklist updated — ${newBlacklist.length} path(s) hidden`
       );
     })
   );
