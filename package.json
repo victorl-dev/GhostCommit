@@ -78,6 +78,11 @@
           "default": true,
           "description": "Start tracking automatically when VS Code opens"
         },
+        "vibetracker.autoPush": {
+          "type": "boolean",
+          "default": true,
+          "description": "Push profile README updates automatically without asking"
+        },
         "vibetracker.projectBlacklist": {
           "type": "array",
           "items": {

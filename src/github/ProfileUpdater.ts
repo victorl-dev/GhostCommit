@@ -134,6 +134,12 @@ export class ProfileUpdater {
 
     const newReadme = `${beforeStart}${VIBE_START}\n\n${metricsSection}\n\n${svgImg}\n\n${VIBE_END}${afterEnd}`;
 
+    const autoPush = vscode.workspace.getConfiguration('vibetracker').get<boolean>('autoPush', true);
+    if (autoPush) {
+      await this.pushUpdate(client, username, repo, newReadme, sha);
+      return;
+    }
+
     const choice = await vscode.window.showInformationMessage(
       'VibeTracker wants to update your profile README',
       { modal: false },
@@ -161,7 +167,6 @@ export class ProfileUpdater {
     }
 
     await this.pushUpdate(client, username, repo, newReadme, sha);
-    vscode.window.showInformationMessage('VibeTracker: Profile README updated!');
   }
 
   private async pushUpdate(
