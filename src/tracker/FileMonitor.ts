@@ -9,6 +9,8 @@ import { StatusBarManager } from '../status/StatusBar';
 const OBFUSCATED_NAME = '[private]';
 const TRACKED_EXTS = new Set(['.ts','.tsx','.js','.jsx','.py','.rs','.go','.java','.kt','.swift','.dart','.rb','.php','.c','.cpp','.h','.hpp','.cs','.fs','.vue','.svelte','.css','.scss','.less','.html','.json','.yaml','.yml','.toml','.md','.sql','.graphql','.prisma']);
 
+
+
 export class FileMonitor {
   private disposables: vscode.Disposable[] = [];
   private running = false;
@@ -157,11 +159,46 @@ export class FileMonitor {
     this.saveCount = 0;
 
     try {
-      const summary = await this.ai.generateSummary(session.entries);
-      this.cache.commitSession(summary);
+      const aiSummary = await this.ai.generateSummary(session.entries);
+      const cfg = vscode.workspace.getConfiguration('vibetracker');
+      const mode = cfg.get<string>('commitMode', 'hybrid');
+
+      let finalSummary = aiSummary;
+
+      if (mode === 'generic') {
+        const exts = [...new Set(session.entries.map(e => e.fileExt))].filter(Boolean).join(', ');
+        finalSummary = `Coding session · ${session.entries.length} file(s) · ${exts || 'various'}`;
+      } else if (mode === 'hybrid') {
+        const choice = await vscode.window.showInformationMessage(
+          `VibeTracker commit: "${aiSummary}"`,
+          { modal: false },
+          'Accept',
+          'Edit',
+          'Use Generic'
+        );
+
+        if (choice === 'Edit') {
+          const custom = await vscode.window.showInputBox({
+            prompt: 'chore: | feat: | fix: | refactor: | docs: | style: | test:',
+            placeHolder: 'chore: update project dependencies',
+            value: aiSummary,
+            valueSelection: [0, aiSummary.length],
+            password: false,
+            ignoreFocusOut: false
+          });
+          if (custom && custom.trim()) {
+            finalSummary = custom.trim();
+          }
+        } else if (choice === 'Use Generic' || !choice) {
+          const exts = [...new Set(session.entries.map(e => e.fileExt))].filter(Boolean).join(', ');
+          finalSummary = `Coding session · ${session.entries.length} file(s) · ${exts || 'various'}`;
+        }
+      }
+
+      this.cache.commitSession(finalSummary);
 
       try {
-        await this.shadowRepo.commitActivity(summary, session.entries.length);
+        await this.shadowRepo.commitActivity(finalSummary, session.entries.length);
       } catch (err: any) {
         console.error('VibeTracker: Shadow commit failed', err?.message);
       }

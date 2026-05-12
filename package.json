@@ -78,6 +78,17 @@
           "default": true,
           "description": "Start tracking automatically when VS Code opens"
         },
+        "vibetracker.commitMode": {
+          "type": "string",
+          "default": "hybrid",
+          "enum": ["hybrid", "auto", "generic"],
+          "enumDescriptions": [
+            "AI suggests, you Accept/Edit/Generic at commit time",
+            "AI generates summary, commits silently",
+            "No AI, generic messages like 'Coding session · N files'"
+          ],
+          "description": "How commit messages are generated"
+        },
         "vibetracker.autoPush": {
           "type": "boolean",
           "default": true,
