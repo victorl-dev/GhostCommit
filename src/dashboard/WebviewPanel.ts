@@ -73,9 +73,12 @@ export class WebviewPanel {
       `<tr><td>${this.esc(e||'?')}</td><td>${d.saves}</td><td>${d.lines}</td></tr>`
     ).join('');
 
-    const sessRows = recent.map(s =>
-      `<tr><td>${new Date(s.startTime).toLocaleString()}</td><td>${s.entries.length}</td><td>${this.esc(s.summary||'-')}</td></tr>`
-    ).join('');
+    const sessRows = recent.map(s => {
+      const fileList = [...new Set(s.entries.map(e => e.fileName))].filter(Boolean).join(', ');
+      const projectList = [...new Set(s.entries.map(e => e.projectName).filter(n => n !== '[private]'))].join(', ');
+      const tooltip = `Files: ${fileList || '?'}\nProject: ${projectList || '?'}`;
+      return `<tr title="${this.esc(tooltip)}" style="cursor:help"><td>${new Date(s.startTime).toLocaleString()}</td><td>${s.entries.length}</td><td>${this.esc(s.summary||'-')}</td></tr>`;
+    }).join('');
 
     const projs = [...t.projects, ...t.hiddenProjects.map(() => '[private]')].join(', ') || '-';
     const tmplOpts = ['artistic','cyber','retro'].map(tm =>
