@@ -12,7 +12,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "*"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -40,6 +40,10 @@
       {
         "command": "vibetracker.status",
         "title": "VibeTracker: Show Status"
+      },
+      {
+        "command": "vibetracker.toggleBlacklist",
+        "title": "VibeTracker: Add Current Project to Blacklist"
       }
     ],
     "configuration": {
@@ -59,6 +63,17 @@
           "type": "number",
           "default": 50,
           "description": "Number of file saves before auto-committing"
+        },
+        "vibetracker.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start tracking automatically when VS Code opens"
+        },
+        "vibetracker.projectBlacklist": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Project folder names to obfuscate in shadow commits (activity still tracked, names hidden)"
         },
         "vibetracker.template": {
           "type": "string",
