@@ -44,6 +44,10 @@
       {
         "command": "vibetracker.toggleBlacklist",
         "title": "VibeTracker: Add Current Project to Blacklist"
+      },
+      {
+        "command": "vibetracker.setupReadme",
+        "title": "VibeTracker: Setup Profile README"
       }
     ],
     "configuration": {

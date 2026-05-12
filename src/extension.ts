@@ -125,6 +125,14 @@ export function activate(context: vscode.ExtensionContext) {
         }
         await cf.update('projectBlacklist', newBlacklist, vscode.ConfigurationTarget.Global);
         vscode.window.showInformationMessage(`VibeTracker: Blacklist updated — ${newBlacklist.length} path(s) hidden`);
+      }),
+      vscode.commands.registerCommand('vibetracker.setupReadme', async () => {
+        try {
+          await auth.login();
+          await profileUpdater.setupReadme();
+        } catch (err) {
+          vscode.window.showErrorMessage(`VibeTracker: README setup failed - ${err}`);
+        }
       })
     );
 
