@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { SessionCache } from '../tracker/SessionCache';
 
-const log = vscode.window.createOutputChannel('VibeTracker Dashboard');
+const log = vscode.window.createOutputChannel('ghostcommit Dashboard');
 
 export class WebviewPanel {
   private panel: vscode.WebviewPanel | undefined;
@@ -21,8 +21,8 @@ export class WebviewPanel {
       }
 
       this.panel = vscode.window.createWebviewPanel(
-        'vibetracker.dashboard',
-        'VibeTracker Dashboard',
+        'ghostcommit.dashboard',
+        'ghostcommit Dashboard',
         vscode.ViewColumn.One,
         { enableScripts: true }
       );
@@ -30,7 +30,7 @@ export class WebviewPanel {
       this.panel.webview.onDidReceiveMessage(msg => {
         log.appendLine(`[onMessage] ${JSON.stringify(msg)}`);
         if (msg.type === 'setConfig') {
-          vscode.workspace.getConfiguration('vibetracker')
+          vscode.workspace.getConfiguration('ghostcommit')
             .update(msg.key, msg.val, vscode.ConfigurationTarget.Global)
             .then(() => this.rebuildHtml());
         }
@@ -58,7 +58,7 @@ export class WebviewPanel {
     const total = this.cache.getTotalStats();
     const recent = this.cache.getRecentSessions(5);
     const allLang = this.cache.getActivityByLanguage();
-    const cfg = vscode.workspace.getConfiguration('vibetracker');
+    const cfg = vscode.workspace.getConfiguration('ghostcommit');
     const threshold = cfg.get<number>('changeThreshold', 10);
     const interval = cfg.get<number>('flushInterval', 30);
     const template = cfg.get<string>('template', 'artistic');
@@ -87,9 +87,9 @@ export class WebviewPanel {
 
     return `<!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><title>VibeTracker</title></head>
+<head><meta charset="UTF-8"><title>GhostCommit</title></head>
 <body style="background:#0d1117;color:#c9d1d9;font-family:-apple-system,system-ui,sans-serif;padding:20px">
-<h1 style="color:#58a6ff">VibeTracker</h1>
+<h1 style="color:#58a6ff">GhostCommit</h1>
 <p style="color:#8b949e;font-size:12px">${new Date().toLocaleDateString('pt-BR')}</p>
 
 <div style="background:#161b22;border:1px solid #1f6feb;border-radius:8px;padding:16px;margin-bottom:16px">
@@ -135,7 +135,7 @@ ${allLangs?'<table style="width:100%;border-collapse:collapse;font-size:12px"><t
 <h2 style="font-size:13px;color:#8b949e">RECENT SESSIONS</h2>
 ${sessRows?'<table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="color:#8b949e;border-bottom:1px solid #30363d"><th style="text-align:left;padding:6px 10px">Time</th><th style="text-align:left;padding:6px 10px">Files</th><th style="text-align:left;padding:6px 10px">Summary</th></tr>'+sessRows+'</table>':'<p style="color:#484f58">No sessions yet</p>'}
 
-<p style="color:#484f58;font-size:10px;margin-top:20px">VibeTracker v0.1</p>
+<p style="color:#484f58;font-size:10px;margin-top:20px">GhostCommit v0.1</p>
 <script>
 (function(){
   var api;

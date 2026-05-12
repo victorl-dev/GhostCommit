@@ -15,8 +15,8 @@ let statusBar: StatusBarManager | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
   try {
-    _output = vscode.window.createOutputChannel('VibeTracker');
-    _output.appendLine('Activating VibeTracker...');
+    _output = vscode.window.createOutputChannel('ghostcommit');
+    _output.appendLine('Activating ghostcommit...');
 
     const cache = new SessionCache(context);
     const ai = new AISummarizer(context);
@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     fileMonitor = new FileMonitor(cache, ai, shadowRepo, profileUpdater, statusBar);
 
-    const config = vscode.workspace.getConfiguration('vibetracker');
+    const config = vscode.workspace.getConfiguration('ghostcommit');
     if (config.get<boolean>('autoStart', true)) {
       fileMonitor.start();
       _output.appendLine('Auto-start enabled — tracking began');
@@ -39,37 +39,37 @@ export function activate(context: vscode.ExtensionContext) {
       _output.appendLine('Auto-start disabled — awaiting manual start');
     }
 
-    _output.appendLine('VibeTracker activated successfully');
+    _output.appendLine('ghostcommit activated successfully');
     _output.show(true);
 
     context.subscriptions.push(
-      vscode.commands.registerCommand('vibetracker.start', () => {
+      vscode.commands.registerCommand('ghostcommit.start', () => {
         fileMonitor?.start();
         statusBar?.setTracking(true);
         _output.appendLine('Manual start');
       }),
-      vscode.commands.registerCommand('vibetracker.stop', () => {
+      vscode.commands.registerCommand('ghostcommit.stop', () => {
         fileMonitor?.stop();
         statusBar?.setTracking(false);
         _output.appendLine('Stopped');
       }),
-      vscode.commands.registerCommand('vibetracker.dashboard', () => {
+      vscode.commands.registerCommand('ghostcommit.dashboard', () => {
         webviewPanel.createOrShow();
       }),
-      vscode.commands.registerCommand('vibetracker.setApiKey', async () => {
+      vscode.commands.registerCommand('ghostcommit.setApiKey', async () => {
         const key = await vscode.window.showInputBox({
           prompt: 'Enter your Gemini API Key (from Google AI Studio)',
           password: true,
           placeHolder: 'AIza...'
         });
         if (key) {
-          await context.secrets.store('vibetracker.geminiKey', key);
+          await context.secrets.store('ghostcommit.geminiKey', key);
           ai.setApiKey(key);
           _output.appendLine('API Key saved');
-          vscode.window.showInformationMessage('VibeTracker: Gemini API Key saved securely!');
+          vscode.window.showInformationMessage('ghostcommit: Gemini API Key saved securely!');
         }
       }),
-      vscode.commands.registerCommand('vibetracker.setTemplate', async () => {
+      vscode.commands.registerCommand('ghostcommit.setTemplate', async () => {
         const selected = await vscode.window.showQuickPick(
           [
             { label: 'Artistic (Hand-drawn)', description: 'Rough.js sketchy style charts', id: 'artistic' },
@@ -79,16 +79,16 @@ export function activate(context: vscode.ExtensionContext) {
           { placeHolder: 'Select a template for your profile SVG' }
         );
         if (selected) {
-          const cf = vscode.workspace.getConfiguration('vibetracker');
+          const cf = vscode.workspace.getConfiguration('ghostcommit');
           await cf.update('template', selected.id, vscode.ConfigurationTarget.Global);
-          vscode.window.showInformationMessage(`VibeTracker: Template set to ${selected.label}`);
+          vscode.window.showInformationMessage(`ghostcommit: Template set to ${selected.label}`);
         }
       }),
-      vscode.commands.registerCommand('vibetracker.status', async () => {
+      vscode.commands.registerCommand('ghostcommit.status', async () => {
         const isTracking = fileMonitor?.isRunning() ?? false;
         const sessionCount = cache.getSessionCount();
         const lastCommit = shadowRepo.getLastCommitInfo();
-        const blacklist = vscode.workspace.getConfiguration('vibetracker').get<string[]>('projectBlacklist', []);
+        const blacklist = vscode.workspace.getConfiguration('ghostcommit').get<string[]>('projectBlacklist', []);
         const message = [
           `Status: ${isTracking ? '$(check) Tracking' : '$(circle-slash) Paused'}`,
           `Sessions tracked: ${sessionCount}`,
@@ -97,13 +97,13 @@ export function activate(context: vscode.ExtensionContext) {
         ].join('\n');
         vscode.window.showInformationMessage(message);
       }),
-      vscode.commands.registerCommand('vibetracker.toggleBlacklist', async () => {
+      vscode.commands.registerCommand('ghostcommit.toggleBlacklist', async () => {
         const wsFolders = vscode.workspace.workspaceFolders;
         if (!wsFolders || wsFolders.length === 0) {
-          vscode.window.showWarningMessage('VibeTracker: No workspace folders open.');
+          vscode.window.showWarningMessage('ghostcommit: No workspace folders open.');
           return;
         }
-        const cf = vscode.workspace.getConfiguration('vibetracker');
+        const cf = vscode.workspace.getConfiguration('ghostcommit');
         const blacklist = cf.get<string[]>('projectBlacklist', []);
         const norm = (p: string) => p.replace(/\\/g, '/').replace(/\/+$/, '');
         const folderItems = wsFolders.map(f => ({
@@ -124,9 +124,9 @@ export function activate(context: vscode.ExtensionContext) {
           else newBlacklist.push(s.description);
         }
         await cf.update('projectBlacklist', newBlacklist, vscode.ConfigurationTarget.Global);
-        vscode.window.showInformationMessage(`VibeTracker: Blacklist updated — ${newBlacklist.length} path(s) hidden`);
+        vscode.window.showInformationMessage(`ghostcommit: Blacklist updated — ${newBlacklist.length} path(s) hidden`);
       }),
-      vscode.commands.registerCommand('vibetracker.daily', () => {
+      vscode.commands.registerCommand('ghostcommit.daily', () => {
         const today = cache.getTodayStats();
         const totalSaves = cache.getTotalStats();
         const langs = Object.entries(today.langs)
@@ -142,40 +142,40 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(msg);
         _output.appendLine(`Daily summary: ${today.saves} saves, ${today.lines} lines`);
       }),
-      vscode.commands.registerCommand('vibetracker.testDashboard', () => {
+      vscode.commands.registerCommand('ghostcommit.testDashboard', () => {
         _output.appendLine('=== DASHBOARD DIAGNOSTIC ===');
         try {
           const panel = vscode.window.createWebviewPanel(
-            'vibetracker.test', 'VibeTracker Test',
+            'ghostcommit.test', 'ghostcommit Test',
             vscode.ViewColumn.One,
             { enableScripts: true }
           );
-          panel.webview.html = '<!DOCTYPE html><html><body><h1 style="color:green">VibeTracker Test OK</h1><p>If you see this, webviews work.</p></body></html>';
+          panel.webview.html = '<!DOCTYPE html><html><body><h1 style="color:green">GhostCommit Test OK</h1><p>If you see this, webviews work.</p></body></html>';
           _output.appendLine('Test webview created successfully');
           _output.appendLine(`cspSource: ${panel.webview.cspSource}`);
-          vscode.window.showInformationMessage('VibeTracker: Test panel opened');
+          vscode.window.showInformationMessage('ghostcommit: Test panel opened');
         } catch (err) {
           _output.appendLine(`Test webview FAILED: ${err}`);
-          vscode.window.showErrorMessage(`VibeTracker webview error: ${err}`);
+          vscode.window.showErrorMessage(`ghostcommit webview error: ${err}`);
         }
       }),
-      vscode.commands.registerCommand('vibetracker.setupReadme', async () => {
+      vscode.commands.registerCommand('ghostcommit.setupReadme', async () => {
         try {
           await auth.login();
           await profileUpdater.setupReadme();
         } catch (err) {
-          vscode.window.showErrorMessage(`VibeTracker: README setup failed - ${err}`);
+          vscode.window.showErrorMessage(`ghostcommit: README setup failed - ${err}`);
         }
       })
     );
 
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration(e => {
-        if (e.affectsConfiguration('vibetracker.template')) {
-          svgGen.setTemplate(vscode.workspace.getConfiguration('vibetracker').get('template', 'artistic'));
+        if (e.affectsConfiguration('ghostcommit.template')) {
+          svgGen.setTemplate(vscode.workspace.getConfiguration('ghostcommit').get('template', 'artistic'));
         }
-        if (e.affectsConfiguration('vibetracker.autoStart')) {
-          const auto = vscode.workspace.getConfiguration('vibetracker').get<boolean>('autoStart', true);
+        if (e.affectsConfiguration('ghostcommit.autoStart')) {
+          const auto = vscode.workspace.getConfiguration('ghostcommit').get<boolean>('autoStart', true);
           if (auto) fileMonitor?.start();
           else fileMonitor?.stop();
         }
@@ -186,7 +186,7 @@ export function activate(context: vscode.ExtensionContext) {
   } catch (err) {
     const msg = `Activation error: ${err}`;
     if (_output) _output.appendLine(msg);
-    vscode.window.showErrorMessage(`VibeTracker: ${msg}`);
+    vscode.window.showErrorMessage(`ghostcommit: ${msg}`);
   }
 }
 
@@ -194,7 +194,7 @@ export function deactivate() {
   try {
     fileMonitor?.stop();
     statusBar?.dispose();
-    if (_output) _output.appendLine('VibeTracker deactivated');
+    if (_output) _output.appendLine('ghostcommit deactivated');
   } catch {}
 }
 
@@ -204,20 +204,20 @@ async function showOnboarding(
   shadowRepo: ShadowRepo,
   profileUpdater: ProfileUpdater
 ) {
-  const hasOnboarded = context.globalState.get<boolean>('vibetracker.onboarded');
+  const hasOnboarded = context.globalState.get<boolean>('ghostcommit.onboarded');
   if (hasOnboarded) return;
 
   const setupKey = await vscode.window.showInformationMessage(
-    'VibeTracker: Configure your Gemini API key to get started.',
+    'ghostcommit: Configure your Gemini API key to get started.',
     'Set API Key',
     'Later'
   );
   if (setupKey === 'Set API Key') {
-    await vscode.commands.executeCommand('vibetracker.setApiKey');
+    await vscode.commands.executeCommand('ghostcommit.setApiKey');
   }
 
   const login = await vscode.window.showInformationMessage(
-    'VibeTracker: Login with GitHub to enable profile updates?',
+    'ghostcommit: Login with GitHub to enable profile updates?',
     'Login',
     'Skip'
   );
@@ -225,17 +225,17 @@ async function showOnboarding(
     try {
       await auth.login();
       const repoSetup = await vscode.window.showInformationMessage(
-        'VibeTracker: Create shadow repo for activity tracking?',
+        'ghostcommit: Create shadow repo for activity tracking?',
         'Create',
         'Skip'
       );
       if (repoSetup === 'Create') {
         await shadowRepo.ensureRepo();
       }
-      await context.globalState.update('vibetracker.onboarded', true);
-      vscode.window.showInformationMessage('VibeTracker: All set! Start coding and your profile will update automatically.');
+      await context.globalState.update('ghostcommit.onboarded', true);
+      vscode.window.showInformationMessage('ghostcommit: All set! Start coding and your profile will update automatically.');
     } catch (err) {
-      vscode.window.showErrorMessage(`VibeTracker: GitHub setup failed - ${err}`);
+      vscode.window.showErrorMessage(`ghostcommit: GitHub setup failed - ${err}`);
     }
   }
 }

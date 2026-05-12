@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+﻿import * as vscode from 'vscode';
 import { GitHubAuth } from './AuthProvider';
 import { SVGGenerator, ActivityStats } from '../svg/Generator';
 import { SessionCache } from '../tracker/SessionCache';
@@ -55,7 +55,7 @@ export class ProfileUpdater {
 
     if (!exists) {
       const choice = await vscode.window.showInformationMessage(
-        'VibeTracker: You have no profile README yet. Create one with VibeTracker markers?',
+        'ghostcommit: You have no profile README yet. Create one with GhostCommit markers?',
         'Generate README Base',
         'Manual Instructions',
         'Not now'
@@ -63,10 +63,10 @@ export class ProfileUpdater {
       if (choice === 'Generate README Base') {
         readmeContent = `# ${username}\n\n${VIBE_START}\n${VIBE_END}\n`;
         await this.pushUpdate(client, username, repo, readmeContent, undefined);
-        vscode.window.showInformationMessage('VibeTracker: README created successfully!');
+        vscode.window.showInformationMessage('ghostcommit: README created successfully!');
       } else if (choice === 'Manual Instructions') {
         vscode.window.showInformationMessage(
-          'VibeTracker: Create a README.md in your profile repo and add:\n\n' +
+          'ghostcommit: Create a README.md in your profile repo and add:\n\n' +
           '<!-- VIBE_START -->\n<!-- VIBE_END -->\n\nWherever you want metrics to appear.'
         );
       }
@@ -75,7 +75,7 @@ export class ProfileUpdater {
 
     if (!hasTags) {
       const choice = await vscode.window.showInformationMessage(
-        'VibeTracker: Your README needs markers for auto-updates. How to proceed?',
+        'ghostcommit: Your README needs markers for auto-updates. How to proceed?',
         'Inject Markers (end of file)',
         'Manual Instructions',
         'Not now'
@@ -83,10 +83,10 @@ export class ProfileUpdater {
       if (choice === 'Inject Markers (end of file)') {
         readmeContent += `\n\n${VIBE_START}\n${VIBE_END}\n`;
         await this.pushUpdate(client, username, repo, readmeContent, sha);
-        vscode.window.showInformationMessage('VibeTracker: Markers added to your README!');
+        vscode.window.showInformationMessage('ghostcommit: Markers added to your README!');
       } else if (choice === 'Manual Instructions') {
         vscode.window.showInformationMessage(
-          'VibeTracker: Add these markers anywhere in your README.md:\n\n' +
+          'ghostcommit: Add these markers anywhere in your README.md:\n\n' +
           '<!-- VIBE_START -->\n<!-- VIBE_END -->\n\n' +
           'The extension will only modify content between them.'
         );
@@ -94,7 +94,7 @@ export class ProfileUpdater {
       return;
     }
 
-    vscode.window.showInformationMessage('VibeTracker: README already configured with markers!');
+    vscode.window.showInformationMessage('ghostcommit: README already configured with markers!');
   }
 
   async update(): Promise<void> {
@@ -124,7 +124,7 @@ export class ProfileUpdater {
     this.updateSvgStats();
     const svgRaw = await this.svgGen.generate();
     const svgBase64 = Buffer.from(svgRaw).toString('base64');
-    const svgImg = `<img src="data:image/svg+xml;base64,${svgBase64}" alt="VibeTracker Metrics"/>`;
+    const svgImg = `<img src="data:image/svg+xml;base64,${svgBase64}" alt="GhostCommit Metrics"/>`;
     const metricsSection = this.buildMetricsSection();
 
     const beforeStart = readmeContent.split(VIBE_START)[0];
@@ -134,14 +134,14 @@ export class ProfileUpdater {
 
     const newReadme = `${beforeStart}${VIBE_START}\n\n${metricsSection}\n\n${svgImg}\n\n${VIBE_END}${afterEnd}`;
 
-    const autoPush = vscode.workspace.getConfiguration('vibetracker').get<boolean>('autoPush', true);
+    const autoPush = vscode.workspace.getConfiguration('ghostcommit').get<boolean>('autoPush', true);
     if (autoPush) {
       await this.pushUpdate(client, username, repo, newReadme, sha);
       return;
     }
 
     const choice = await vscode.window.showInformationMessage(
-      'VibeTracker wants to update your profile README',
+      'ghostcommit wants to update your profile README',
       { modal: false },
       'Preview',
       'Push Now',
@@ -158,11 +158,11 @@ export class ProfileUpdater {
         'Skip'
       );
       if (confirm !== 'Push Now') {
-        vscode.window.showInformationMessage('VibeTracker: Update skipped.');
+        vscode.window.showInformationMessage('ghostcommit: Update skipped.');
         return;
       }
     } else if (choice === 'Skip') {
-      vscode.window.showInformationMessage('VibeTracker: Update skipped.');
+      vscode.window.showInformationMessage('ghostcommit: Update skipped.');
       return;
     }
 
@@ -181,13 +181,13 @@ export class ProfileUpdater {
         owner,
         repo,
         path: 'README.md',
-        message: '[VibeTracker Auto-Update] Profile metrics refresh',
+        message: '[GhostCommit Auto-Update] Profile metrics refresh',
         content: Buffer.from(content).toString('base64'),
         sha
       });
     } catch (err: any) {
       const msg = `GitHub push failed: ${err?.message || err}`;
-      vscode.window.showErrorMessage(`VibeTracker: ${msg}`);
+      vscode.window.showErrorMessage(`ghostcommit: ${msg}`);
       throw err;
     }
   }

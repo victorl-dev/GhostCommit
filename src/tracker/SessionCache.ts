@@ -36,7 +36,7 @@ export class SessionCache {
   }
 
   private get cacheFile(): string {
-    return path.join(this.storagePath, 'vibetracker-sessions.json');
+    return path.join(this.storagePath, 'ghostcommit-sessions.json');
   }
 
   private load() {
@@ -60,7 +60,7 @@ export class SessionCache {
         currentSession: this.currentSession
       }, null, 2), 'utf-8');
     } catch (err) {
-      console.error('VibeTracker: Failed to save cache', err);
+      console.error('ghostcommit: Failed to save cache', err);
     }
   }
 

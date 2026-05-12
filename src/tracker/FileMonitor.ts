@@ -74,7 +74,7 @@ export class FileMonitor {
   }
 
   private isBlacklisted(docUri: vscode.Uri): { hidden: boolean; matchedPath?: string } {
-    const config = vscode.workspace.getConfiguration('vibetracker');
+    const config = vscode.workspace.getConfiguration('ghostcommit');
     const blacklist = config.get<string[]>('projectBlacklist', []);
     const filePath = docUri.fsPath.toLowerCase();
     for (const bp of blacklist) {
@@ -136,7 +136,7 @@ export class FileMonitor {
   }
 
   private checkFlushConditions() {
-    const config = vscode.workspace.getConfiguration('vibetracker');
+    const config = vscode.workspace.getConfiguration('ghostcommit');
     const threshold = config.get<number>('changeThreshold', 10);
     const idleMinutes = config.get<number>('flushInterval', 30);
 
@@ -160,7 +160,7 @@ export class FileMonitor {
 
     try {
       const aiSummary = await this.ai.generateSummary(session.entries);
-      const cfg = vscode.workspace.getConfiguration('vibetracker');
+      const cfg = vscode.workspace.getConfiguration('ghostcommit');
       const mode = cfg.get<string>('commitMode', 'hybrid');
 
       let finalSummary = aiSummary;
@@ -170,7 +170,7 @@ export class FileMonitor {
         finalSummary = `Coding session · ${session.entries.length} file(s) · ${exts || 'various'}`;
       } else if (mode === 'hybrid') {
         const choice = await vscode.window.showInformationMessage(
-          `VibeTracker commit: "${aiSummary}"`,
+          `ghostcommit commit: "${aiSummary}"`,
           { modal: false },
           'Accept',
           'Edit',
@@ -200,26 +200,26 @@ export class FileMonitor {
       try {
         await this.shadowRepo.commitActivity(finalSummary, session.entries.length);
       } catch (err: any) {
-        console.error('VibeTracker: Shadow commit failed', err?.message);
+        console.error('ghostcommit: Shadow commit failed', err?.message);
       }
 
       try {
         await this.profileUpdater.update();
       } catch (err: any) {
-        const msg = `VibeTracker: Profile update failed - ${err?.message || err}`;
+        const msg = `ghostcommit: Profile update failed - ${err?.message || err}`;
         console.error(msg);
       }
 
       this.cache.startNewSession();
     } catch (err) {
-      console.error('VibeTracker: Flush failed', err);
+      console.error('ghostcommit: Flush failed', err);
     }
 
     this.startFlushTimer();
   }
 
   private startFlushTimer() {
-    const config = vscode.workspace.getConfiguration('vibetracker');
+    const config = vscode.workspace.getConfiguration('ghostcommit');
     const intervalMs = (config.get<number>('flushInterval', 30) + 1) * 60 * 1000;
     this.flushTimer = setInterval(() => this.checkFlushConditions(), intervalMs);
   }

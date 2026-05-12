@@ -10,7 +10,7 @@ export class AISummarizer {
 
   private async ensureClient() {
     if (this.client) return;
-    this.apiKey = await this.context.secrets.get('vibetracker.geminiKey') || null;
+    this.apiKey = await this.context.secrets.get('ghostcommit.geminiKey') || null;
     if (this.apiKey) {
       this.client = new GoogleGenAI({ apiKey: this.apiKey });
     }
