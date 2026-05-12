@@ -15,7 +15,7 @@ export class WebviewPanel {
   createOrShow() {
     try {
       if (this.panel) {
-        this.panel.reveal(vscode.ViewColumn.Beside);
+        this.panel.reveal(vscode.ViewColumn.One);
         this.updateContent();
         return;
       }
@@ -23,14 +23,15 @@ export class WebviewPanel {
       this.panel = vscode.window.createWebviewPanel(
         WebviewPanel.viewType,
         'VibeTracker Dashboard',
-        vscode.ViewColumn.Beside,
-        { enableScripts: false, retainContextWhenHidden: true }
+        vscode.ViewColumn.One,
+        { enableScripts: true, retainContextWhenHidden: true, enableFindWidget: true }
       );
 
       this.panel.onDidDispose(() => { this.panel = undefined; });
       this.panel.onDidChangeViewState(() => {
         if (this.panel?.visible) this.updateContent();
       });
+      this.panel.webview.onDidReceiveMessage(() => {}, undefined, this.context.subscriptions);
 
       this.updateContent();
     } catch (err) {
