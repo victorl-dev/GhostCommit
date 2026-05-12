@@ -9,13 +9,13 @@ import { SVGGenerator } from './svg/Generator';
 import { WebviewPanel } from './dashboard/WebviewPanel';
 import { StatusBarManager } from './status/StatusBar';
 
-const _output = vscode.window.createOutputChannel('VibeTracker');
-
+let _output: vscode.OutputChannel;
 let fileMonitor: FileMonitor | undefined;
 let statusBar: StatusBarManager | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
   try {
+    _output = vscode.window.createOutputChannel('VibeTracker');
     _output.appendLine('Activating VibeTracker...');
 
     const cache = new SessionCache(context);
@@ -40,128 +40,112 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     _output.appendLine('VibeTracker activated successfully');
-    vscode.window.showInformationMessage('VibeTracker is now tracking your coding activity');
+    _output.show(true);
 
-    // Show output channel on first activation
-    const hasShown = context.globalState.get<boolean>('vibetracker.outputShown');
-    if (!hasShown) {
-      _output.show(true);
-      context.globalState.update('vibetracker.outputShown', true);
-    }
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('vibetracker.start', () => {
-      fileMonitor?.start();
-      statusBar?.setTracking(true);
-    }),
-    vscode.commands.registerCommand('vibetracker.stop', () => {
-      fileMonitor?.stop();
-      statusBar?.setTracking(false);
-    }),
-    vscode.commands.registerCommand('vibetracker.dashboard', () => {
-      webviewPanel.createOrShow();
-    }),
-    vscode.commands.registerCommand('vibetracker.setApiKey', async () => {
-      const key = await vscode.window.showInputBox({
-        prompt: 'Enter your Gemini API Key (from Google AI Studio)',
-        password: true,
-        placeHolder: 'AIza...'
-      });
-      if (key) {
-        await context.secrets.store('vibetracker.geminiKey', key);
-        ai.setApiKey(key);
-        vscode.window.showInformationMessage('VibeTracker: Gemini API Key saved securely!');
-      }
-    }),
-    vscode.commands.registerCommand('vibetracker.setTemplate', async () => {
-      const selected = await vscode.window.showQuickPick(
-        [
-          { label: 'Artistic (Hand-drawn)', description: 'Rough.js sketchy style charts', id: 'artistic' },
-          { label: 'Cyber-Minimalist', description: 'Clean modern SVG design', id: 'cyber' },
-          { label: 'Retro Terminal', description: 'ASCII/pixel art style', id: 'retro' }
-        ],
-        { placeHolder: 'Select a template for your profile SVG' }
-      );
-      if (selected) {
-        const cf = vscode.workspace.getConfiguration('vibetracker');
-        await cf.update('template', selected.id, vscode.ConfigurationTarget.Global);
-        vscode.window.showInformationMessage(`VibeTracker: Template set to ${selected.label}`);
-      }
-    }),
-    vscode.commands.registerCommand('vibetracker.status', async () => {
-      const isTracking = fileMonitor?.isRunning() ?? false;
-      const sessionCount = cache.getSessionCount();
-      const lastCommit = shadowRepo.getLastCommitInfo();
-      const blacklist = vscode.workspace.getConfiguration('vibetracker').get<string[]>('projectBlacklist', []);
-      const message = [
-        `Status: ${isTracking ? '$(check) Tracking' : '$(circle-slash) Paused'}`,
-        `Sessions tracked: ${sessionCount}`,
-        lastCommit ? `Last commit: ${lastCommit}` : 'No commits yet',
-        `Blacklisted projects: ${blacklist.length > 0 ? blacklist.join(', ') : 'none'}`
-      ].join('\n');
-      vscode.window.showInformationMessage(message);
-    }),
-    vscode.commands.registerCommand('vibetracker.toggleBlacklist', async () => {
-      const wsFolders = vscode.workspace.workspaceFolders;
-      if (!wsFolders || wsFolders.length === 0) {
-        vscode.window.showWarningMessage('VibeTracker: No workspace folders open.');
-        return;
-      }
-      const cf = vscode.workspace.getConfiguration('vibetracker');
-      const blacklist = cf.get<string[]>('projectBlacklist', []);
-
-      const norm = (p: string) => p.replace(/\\/g, '/').replace(/\/+$/, '');
-      const alreadyBlacklisted = (path: string) =>
-        blacklist.some(b => norm(b) === norm(path));
-
-      const folderItems = wsFolders.map(f => ({
-        label: f.name,
-        description: f.uri.fsPath,
-        picked: alreadyBlacklisted(f.uri.fsPath)
-      }));
-
-      const selected = await vscode.window.showQuickPick(folderItems, {
-        placeHolder: 'Toggle projects to obfuscate (path-based)',
-        canPickMany: true
-      });
-      if (!selected) return;
-
-      let newBlacklist = [...blacklist];
-      for (const s of selected) {
-        const pathNorm = norm(s.description);
-        const idx = newBlacklist.findIndex(b => norm(b) === pathNorm);
-        if (idx >= 0) {
-          newBlacklist.splice(idx, 1);
-        } else {
-          newBlacklist.push(s.description);
+    context.subscriptions.push(
+      vscode.commands.registerCommand('vibetracker.start', () => {
+        fileMonitor?.start();
+        statusBar?.setTracking(true);
+        _output.appendLine('Manual start');
+      }),
+      vscode.commands.registerCommand('vibetracker.stop', () => {
+        fileMonitor?.stop();
+        statusBar?.setTracking(false);
+        _output.appendLine('Stopped');
+      }),
+      vscode.commands.registerCommand('vibetracker.dashboard', () => {
+        webviewPanel.createOrShow();
+      }),
+      vscode.commands.registerCommand('vibetracker.setApiKey', async () => {
+        const key = await vscode.window.showInputBox({
+          prompt: 'Enter your Gemini API Key (from Google AI Studio)',
+          password: true,
+          placeHolder: 'AIza...'
+        });
+        if (key) {
+          await context.secrets.store('vibetracker.geminiKey', key);
+          ai.setApiKey(key);
+          _output.appendLine('API Key saved');
+          vscode.window.showInformationMessage('VibeTracker: Gemini API Key saved securely!');
         }
-      }
+      }),
+      vscode.commands.registerCommand('vibetracker.setTemplate', async () => {
+        const selected = await vscode.window.showQuickPick(
+          [
+            { label: 'Artistic (Hand-drawn)', description: 'Rough.js sketchy style charts', id: 'artistic' },
+            { label: 'Cyber-Minimalist', description: 'Clean modern SVG design', id: 'cyber' },
+            { label: 'Retro Terminal', description: 'ASCII/pixel art style', id: 'retro' }
+          ],
+          { placeHolder: 'Select a template for your profile SVG' }
+        );
+        if (selected) {
+          const cf = vscode.workspace.getConfiguration('vibetracker');
+          await cf.update('template', selected.id, vscode.ConfigurationTarget.Global);
+          vscode.window.showInformationMessage(`VibeTracker: Template set to ${selected.label}`);
+        }
+      }),
+      vscode.commands.registerCommand('vibetracker.status', async () => {
+        const isTracking = fileMonitor?.isRunning() ?? false;
+        const sessionCount = cache.getSessionCount();
+        const lastCommit = shadowRepo.getLastCommitInfo();
+        const blacklist = vscode.workspace.getConfiguration('vibetracker').get<string[]>('projectBlacklist', []);
+        const message = [
+          `Status: ${isTracking ? '$(check) Tracking' : '$(circle-slash) Paused'}`,
+          `Sessions tracked: ${sessionCount}`,
+          lastCommit ? `Last commit: ${lastCommit}` : 'No commits yet',
+          `Blacklisted: ${blacklist.length > 0 ? blacklist.length + ' path(s)' : 'none'}`
+        ].join('\n');
+        vscode.window.showInformationMessage(message);
+      }),
+      vscode.commands.registerCommand('vibetracker.toggleBlacklist', async () => {
+        const wsFolders = vscode.workspace.workspaceFolders;
+        if (!wsFolders || wsFolders.length === 0) {
+          vscode.window.showWarningMessage('VibeTracker: No workspace folders open.');
+          return;
+        }
+        const cf = vscode.workspace.getConfiguration('vibetracker');
+        const blacklist = cf.get<string[]>('projectBlacklist', []);
+        const norm = (p: string) => p.replace(/\\/g, '/').replace(/\/+$/, '');
+        const folderItems = wsFolders.map(f => ({
+          label: `${f.name} (${f.uri.fsPath})`,
+          description: f.uri.fsPath,
+          picked: blacklist.some(b => norm(b) === norm(f.uri.fsPath))
+        }));
+        const selected = await vscode.window.showQuickPick(folderItems, {
+          placeHolder: 'Toggle projects to obfuscate (path-based)',
+          canPickMany: true
+        });
+        if (!selected) return;
+        let newBlacklist = [...blacklist];
+        for (const s of selected) {
+          const pn = norm(s.description);
+          const idx = newBlacklist.findIndex(b => norm(b) === pn);
+          if (idx >= 0) newBlacklist.splice(idx, 1);
+          else newBlacklist.push(s.description);
+        }
+        await cf.update('projectBlacklist', newBlacklist, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(`VibeTracker: Blacklist updated — ${newBlacklist.length} path(s) hidden`);
+      })
+    );
 
-      await cf.update('projectBlacklist', newBlacklist, vscode.ConfigurationTarget.Global);
-      vscode.window.showInformationMessage(
-        `VibeTracker: Blacklist updated — ${newBlacklist.length} path(s) hidden`
-      );
-    })
-  );
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration(e => {
+        if (e.affectsConfiguration('vibetracker.template')) {
+          svgGen.setTemplate(vscode.workspace.getConfiguration('vibetracker').get('template', 'artistic'));
+        }
+        if (e.affectsConfiguration('vibetracker.autoStart')) {
+          const auto = vscode.workspace.getConfiguration('vibetracker').get<boolean>('autoStart', true);
+          if (auto) fileMonitor?.start();
+          else fileMonitor?.stop();
+        }
+      })
+    );
 
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(e => {
-      if (e.affectsConfiguration('vibetracker.template')) {
-        svgGen.setTemplate(vscode.workspace.getConfiguration('vibetracker').get('template', 'artistic'));
-      }
-      if (e.affectsConfiguration('vibetracker.autoStart')) {
-        const auto = vscode.workspace.getConfiguration('vibetracker').get<boolean>('autoStart', true);
-        if (auto) fileMonitor?.start();
-        else fileMonitor?.stop();
-      }
-    })
-  );
-
-  showOnboarding(context, auth, shadowRepo, profileUpdater);
-
+    showOnboarding(context, auth, shadowRepo, profileUpdater);
   } catch (err) {
-    _output.appendLine(`ACTIVATION ERROR: ${err}`);
-    vscode.window.showErrorMessage(`VibeTracker failed to activate: ${err}`);
+    const msg = `Activation error: ${err}`;
+    if (_output) _output.appendLine(msg);
+    vscode.window.showErrorMessage(`VibeTracker: ${msg}`);
   }
 }
 
@@ -169,7 +153,7 @@ export function deactivate() {
   try {
     fileMonitor?.stop();
     statusBar?.dispose();
-    _output.appendLine('VibeTracker deactivated');
+    if (_output) _output.appendLine('VibeTracker deactivated');
   } catch {}
 }
 
