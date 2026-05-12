@@ -3,6 +3,7 @@
   "displayName": "VibeTracker",
   "description": "Track your vibe coding activity and update GitHub profile with styled metrics",
   "version": "0.1.0",
+  "icon": "media/icon.png",
   "publisher": "victorlobato",
   "license": "MIT",
   "engines": {
