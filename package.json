@@ -73,7 +73,7 @@
           "type": "array",
           "items": { "type": "string" },
           "default": [],
-          "description": "Project folder names to obfuscate in shadow commits (activity still tracked, names hidden)"
+          "description": "Full paths of project folders to obfuscate in shadow commits (ex: D:\\Projects\\Secret). Activity still tracked, but project name hidden as [private]"
         },
         "vibetracker.template": {
           "type": "string",
