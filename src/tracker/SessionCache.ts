@@ -139,4 +139,29 @@ export class SessionCache {
     }
     return { totalSaves, totalLines };
   }
+
+  getTodayStats() {
+    const today = new Date().toISOString().split('T')[0];
+    let saves = 0;
+    let lines = 0;
+    const langs: Record<string, number> = {};
+    const projects = new Set<string>();
+    const hiddenProjects: string[] = [];
+
+    for (const session of [...this.sessions, ...(this.currentSession ? [this.currentSession] : [])]) {
+      if (session.date !== today) continue;
+      for (const entry of session.entries) {
+        saves++;
+        lines += entry.linesAdded;
+        const ext = entry.fileExt || '?';
+        langs[ext] = (langs[ext] || 0) + 1;
+        if (entry.hidden) {
+          if (!hiddenProjects.includes(entry.projectName)) hiddenProjects.push(entry.projectName);
+        } else {
+          projects.add(entry.projectName);
+        }
+      }
+    }
+    return { saves, lines, langs, projects: [...projects], hiddenProjects };
+  }
 }

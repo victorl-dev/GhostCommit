@@ -48,6 +48,10 @@
       {
         "command": "vibetracker.setupReadme",
         "title": "VibeTracker: Setup Profile README"
+      },
+      {
+        "command": "vibetracker.daily",
+        "title": "VibeTracker: Daily Summary"
       }
     ],
     "configuration": {

@@ -126,6 +126,22 @@ export function activate(context: vscode.ExtensionContext) {
         await cf.update('projectBlacklist', newBlacklist, vscode.ConfigurationTarget.Global);
         vscode.window.showInformationMessage(`VibeTracker: Blacklist updated — ${newBlacklist.length} path(s) hidden`);
       }),
+      vscode.commands.registerCommand('vibetracker.daily', () => {
+        const today = cache.getTodayStats();
+        const totalSaves = cache.getTotalStats();
+        const langs = Object.entries(today.langs)
+          .sort(([, a], [, b]) => b - a).slice(0, 5)
+          .map(([ext, n]) => `${ext} (${n})`).join(', ');
+        const projs = [...today.projects, ...today.hiddenProjects.map(() => '[private]')];
+        const msg = [
+          `📅 ${new Date().toLocaleDateString('pt-BR')}`,
+          `📁 ${today.saves} saves · ${today.lines} lines · ${projs.length} project(s)`,
+          langs ? `🔤 ${langs}` : '',
+          `📊 All time: ${totalSaves.totalSaves} saves · ${totalSaves.totalLines} lines`
+        ].filter(Boolean).join('\n');
+        vscode.window.showInformationMessage(msg);
+        _output.appendLine(`Daily summary: ${today.saves} saves, ${today.lines} lines`);
+      }),
       vscode.commands.registerCommand('vibetracker.setupReadme', async () => {
         try {
           await auth.login();
