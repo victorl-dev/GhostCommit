@@ -4,6 +4,7 @@ import { SVGGenerator } from '../svg/Generator';
 
 export class WebviewPanel {
   private panel: vscode.WebviewPanel | undefined;
+  private msgDisposable: vscode.Disposable | undefined;
 
   constructor(
     private context: vscode.ExtensionContext,
@@ -25,8 +26,11 @@ export class WebviewPanel {
       { enableScripts: true }
     );
 
-    this.panel.onDidDispose(() => { this.panel = undefined; });
-    this.panel.webview.onDidReceiveMessage(msg => this.handleMessage(msg));
+    this.panel.onDidDispose(() => {
+      this.msgDisposable?.dispose();
+      this.panel = undefined;
+    });
+    this.msgDisposable = this.panel.webview.onDidReceiveMessage(msg => this.handleMessage(msg));
     this.refresh();
   }
 
@@ -86,8 +90,13 @@ export class WebviewPanel {
 <body style="background:#0d1117;color:#c9d1d9;font-family:-apple-system,system-ui,sans-serif;padding:20px">
 
   <script>
-    const vscode = acquireVsCodeApi();
-    function update(k,v) { vscode.postMessage({command:k,value:v}); }
+    (function() {
+      var api = window.__vt;
+      if (!api) { try { api = acquireVsCodeApi(); window.__vt = api; } catch(e) {} }
+      window.update = function(k,v) {
+        if (api) api.postMessage({command:k,value:v});
+      };
+    })();
   </script>
 
   <h1 style="color:#58a6ff;font-size:20px;margin-bottom:4px">VibeTracker</h1>
