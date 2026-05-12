@@ -134,27 +134,34 @@ export class ProfileUpdater {
 
     const newReadme = `${beforeStart}${VIBE_START}\n\n${metricsSection}\n\n${svgImg}\n\n${VIBE_END}${afterEnd}`;
 
-    const notification = await vscode.window.showInformationMessage(
+    const choice = await vscode.window.showInformationMessage(
       'VibeTracker wants to update your profile README',
+      { modal: false },
       'Preview',
-      'Dismiss'
+      'Push Now',
+      'Skip'
     );
 
-    if (notification === 'Preview') {
-      const doc = await vscode.workspace.openTextDocument({
-        content: newReadme,
-        language: 'markdown'
-      });
-      await vscode.window.showTextDocument(doc);
+    if (choice === 'Preview') {
+      await vscode.workspace.openTextDocument({ content: newReadme, language: 'markdown' })
+        .then(doc => vscode.window.showTextDocument(doc));
       const confirm = await vscode.window.showInformationMessage(
-        'Preview the changes. Push to GitHub?',
-        'Push',
-        'Cancel'
+        'Push these changes to GitHub?',
+        { modal: false },
+        'Push Now',
+        'Skip'
       );
-      if (confirm !== 'Push') return;
+      if (confirm !== 'Push Now') {
+        vscode.window.showInformationMessage('VibeTracker: Update skipped.');
+        return;
+      }
+    } else if (choice === 'Skip') {
+      vscode.window.showInformationMessage('VibeTracker: Update skipped.');
+      return;
     }
 
     await this.pushUpdate(client, username, repo, newReadme, sha);
+    vscode.window.showInformationMessage('VibeTracker: Profile README updated!');
   }
 
   private async pushUpdate(
@@ -164,14 +171,20 @@ export class ProfileUpdater {
     content: string,
     sha: string | undefined
   ) {
-    await client.request('PUT /repos/{owner}/{repo}/contents/README.md', {
-      owner,
-      repo,
-      path: 'README.md',
-      message: '[VibeTracker Auto-Update] Profile metrics refresh',
-      content: Buffer.from(content).toString('base64'),
-      sha
-    });
+    try {
+      await client.request('PUT /repos/{owner}/{repo}/contents/README.md', {
+        owner,
+        repo,
+        path: 'README.md',
+        message: '[VibeTracker Auto-Update] Profile metrics refresh',
+        content: Buffer.from(content).toString('base64'),
+        sha
+      });
+    } catch (err: any) {
+      const msg = `GitHub push failed: ${err?.message || err}`;
+      vscode.window.showErrorMessage(`VibeTracker: ${msg}`);
+      throw err;
+    }
   }
 
   private buildMetricsSection(): string {
