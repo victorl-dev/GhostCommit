@@ -59,7 +59,7 @@ export class WebviewPanel {
     const recent = this.cache.getRecentSessions(5);
     const allLang = this.cache.getActivityByLanguage();
     const cfg = vscode.workspace.getConfiguration('vibetracker');
-    const threshold = cfg.get<number>('savesThreshold', 10);
+    const threshold = cfg.get<number>('changeThreshold', 10);
     const interval = cfg.get<number>('flushInterval', 30);
     const template = cfg.get<string>('template', 'artistic');
 
@@ -92,7 +92,7 @@ export class WebviewPanel {
 <div style="background:#161b22;border:1px solid #1f6feb;border-radius:8px;padding:16px;margin-bottom:16px">
 <h2 style="color:#58a6ff;font-size:13px;margin-top:0">Today Activity</h2>
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-<div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#58a6ff">${t.saves}</div><div style="font-size:10px;color:#8b949e">SAVES</div></div>
+<div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#58a6ff">${t.saves}</div><div style="font-size:10px;color:#8b949e">CHANGES</div></div>
 <div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#58a6ff">${t.lines}</div><div style="font-size:10px;color:#8b949e">LINES</div></div>
 <div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#58a6ff">${t.projects.length+t.hiddenProjects.length}</div><div style="font-size:10px;color:#8b949e">PROJECTS</div></div>
 </div>
@@ -102,7 +102,7 @@ ${todayLangs?'<table style="width:100%;border-collapse:collapse;font-size:12px">
 
 <h2 style="font-size:13px;color:#8b949e">ALL TIME</h2>
 <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px">
-<div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#58a6ff">${total.totalSaves}</div><div style="font-size:10px;color:#8b949e">TOTAL SAVES</div></div>
+<div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#58a6ff">${total.totalSaves}</div><div style="font-size:10px;color:#8b949e">TOTAL CHANGES</div></div>
 <div style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:#58a6ff">${total.totalLines}</div><div style="font-size:10px;color:#8b949e">TOTAL LINES</div></div>
 </div>
 
@@ -112,7 +112,7 @@ ${allLangs?'<table style="width:100%;border-collapse:collapse;font-size:12px"><t
 <h2 style="font-size:13px;color:#8b949e">SETTINGS</h2>
 <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;margin-bottom:16px">
 <div style="margin-bottom:14px">
-<label style="font-size:12px;color:#8b949e">Threshold (saves)</label>
+<label style="font-size:12px;color:#8b949e">Flush after (changes)</label>
 <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
 <button id="btnMinus" style="background:#30363d;color:#c9d1d9;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:14px">-</button>
 <span style="font-size:18px;font-weight:700;color:#58a6ff;min-width:30px;text-align:center">${threshold}</span>
@@ -139,8 +139,8 @@ ${sessRows?'<table style="width:100%;border-collapse:collapse;font-size:12px"><t
   try { api = acquireVsCodeApi(); } catch(e) {}
   function post(k,v) { if(api) api.postMessage({type:'setConfig',key:k,val:v}); }
 
-  document.getElementById('btnMinus')?.addEventListener('click',function(){post('savesThreshold',${Math.max(1,threshold-1)});});
-  document.getElementById('btnPlus')?.addEventListener('click',function(){post('savesThreshold',${threshold+1});});
+  document.getElementById('btnMinus')?.addEventListener('click',function(){post('changeThreshold',${Math.max(1,threshold-1)});});
+  document.getElementById('btnPlus')?.addEventListener('click',function(){post('changeThreshold',${threshold+1});});
   document.getElementById('btnIntMinus')?.addEventListener('click',function(){post('flushInterval',${Math.max(1,interval-5)});});
   document.getElementById('btnIntPlus')?.addEventListener('click',function(){post('flushInterval',${interval+5});});
   document.getElementById('selTemplate')?.addEventListener('change',function(){post('template',this.value);});
