@@ -38,8 +38,9 @@ export class StatusBarManager {
 
   private updateDisplay() {
     if (this.tracking) {
-      this.item.text = `$(graph) GhostCommit: ${this.changeCount} changes`;
-      this.item.tooltip = `ghostcommit — tracking ${this.elapsed()}\n${this.changeCount} file change(s) this session\nClick to open Dashboard`;
+      const label = this.changeCount === 1 ? 'save' : 'saves';
+      this.item.text = `$(graph) GhostCommit: ${this.changeCount} ${label}`;
+      this.item.tooltip = `ghostcommit — tracking ${this.elapsed()}\n${this.changeCount} file save(s) this session\nClick to open Dashboard`;
       this.item.backgroundColor = undefined;
     } else {
       this.item.text = '$(circle-slash) GhostCommit: paused';

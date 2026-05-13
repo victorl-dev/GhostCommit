@@ -19,7 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
     _output.appendLine('Activating ghostcommit...');
 
     const cache = new SessionCache(context);
-    const ai = new AISummarizer(context);
+    const ai = new AISummarizer();
     const auth = new GitHubAuth();
     const shadowRepo = new ShadowRepo(auth);
     const svgGen = new SVGGenerator(context);
@@ -39,6 +39,9 @@ export function activate(context: vscode.ExtensionContext) {
       _output.appendLine('Auto-start disabled — awaiting manual start');
     }
 
+    // Refresh profile README with latest template/data on activation
+    profileUpdater.update().catch(() => {});
+
     _output.appendLine('ghostcommit activated successfully');
     _output.show(true);
 
@@ -56,25 +59,12 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.commands.registerCommand('ghostcommit.dashboard', () => {
         webviewPanel.createOrShow();
       }),
-      vscode.commands.registerCommand('ghostcommit.setApiKey', async () => {
-        const key = await vscode.window.showInputBox({
-          prompt: 'Enter your Gemini API Key (from Google AI Studio)',
-          password: true,
-          placeHolder: 'AIza...'
-        });
-        if (key) {
-          await context.secrets.store('ghostcommit.geminiKey', key);
-          ai.setApiKey(key);
-          _output.appendLine('API Key saved');
-          vscode.window.showInformationMessage('ghostcommit: Gemini API Key saved securely!');
-        }
-      }),
       vscode.commands.registerCommand('ghostcommit.setTemplate', async () => {
         const selected = await vscode.window.showQuickPick(
           [
-            { label: 'Artistic (Hand-drawn)', description: 'Rough.js sketchy style charts', id: 'artistic' },
-            { label: 'Cyber-Minimalist', description: 'Clean modern SVG design', id: 'cyber' },
-            { label: 'Retro Terminal', description: 'ASCII/pixel art style', id: 'retro' }
+            { label: 'Ghost', description: 'Dark blue theme with compact bars', id: 'ghost' },
+            { label: 'Wraith', description: 'Dark green theme with compact bars', id: 'wraith' },
+            { label: 'Shadow', description: 'Dark purple theme with compact bars', id: 'shadow' }
           ],
           { placeHolder: 'Select a template for your profile SVG' }
         );
@@ -172,7 +162,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration(e => {
         if (e.affectsConfiguration('ghostcommit.template')) {
-          svgGen.setTemplate(vscode.workspace.getConfiguration('ghostcommit').get('template', 'artistic'));
+          svgGen.setTemplate(vscode.workspace.getConfiguration('ghostcommit').get('template', 'ghost'));
         }
         if (e.affectsConfiguration('ghostcommit.autoStart')) {
           const auto = vscode.workspace.getConfiguration('ghostcommit').get<boolean>('autoStart', true);
@@ -206,15 +196,6 @@ async function showOnboarding(
 ) {
   const hasOnboarded = context.globalState.get<boolean>('ghostcommit.onboarded');
   if (hasOnboarded) return;
-
-  const setupKey = await vscode.window.showInformationMessage(
-    'ghostcommit: Configure your Gemini API key to get started.',
-    'Set API Key',
-    'Later'
-  );
-  if (setupKey === 'Set API Key') {
-    await vscode.commands.executeCommand('ghostcommit.setApiKey');
-  }
 
   const login = await vscode.window.showInformationMessage(
     'ghostcommit: Login with GitHub to enable profile updates?',
