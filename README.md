@@ -14,6 +14,22 @@ mesmo em projetos que nunca sao publicados.
 3. GhostCommit detecta alteracoes em arquivos e faz shadow commits
 4. Seu grafico de contribuicoes do GitHub fica verdinho
 
+![Contributions](https://res.cloudinary.com/dmii83n8i/image/upload/f_auto,q_auto/image22_wijilf)
+
+> Atualização automática e silenciosa no seu perfil do GitHub — cada save vira um commit fantasma no mesmo dia.
+
+![Metrics Preview](https://res.cloudinary.com/dmii83n8i/image/upload/f_auto,q_auto/2222_pjkqw5)
+
+**📊 Dados exibidos no card:**
+
+| Métrica | O que significa |
+|---------|----------------|
+| **Commits** | Quantas vezes você salvou um arquivo hoje |
+| **Echoes** | Quantas vezes o fantasma apareceu — a cada N saves ele dá um "grito" no GitHub e seu gráfico fica verdinho |
+| **Projetos** | Nomes dos projetos que você editou (projetos ocultos viram `[hidden]`) |
+| **Linguagens** | As stacks que você mais usou no dia, com barra de progresso |
+| **Último arquivo** | O último arquivo que você salvou |
+
 ## Instalacao
 
 ### VS Code
@@ -32,7 +48,6 @@ mesmo em projetos que nunca sao publicados.
 | GhostCommit: Stop Tracking | Pausa |
 | GhostCommit: Open Dashboard | Painel com metricas ao vivo |
 | GhostCommit: Daily Summary | Resumo do dia |
-| GhostCommit: Set Gemini API Key | Configura chave da IA |
 | GhostCommit: Setup Profile README | Configura README do perfil GitHub |
 | GhostCommit: Add Project to Blacklist | Oculta projeto (commits continuam) |
 
@@ -41,23 +56,22 @@ mesmo em projetos que nunca sao publicados.
 | Chave | Padrao | Descricao |
 |-------|--------|-----------|
 | ghostcommit.autoStart | true | Inicia automaticamente |
-| ghostcommit.changeThreshold | 10 | Arquivos unicos antes de commitar |
-| ghostcommit.flushInterval | 30 | Minutos de inatividade |
+| ghostcommit.changeThreshold | 100 | Saves antes de commitar |
+| ghostcommit.flushInterval | 120 | Minutos de inatividade |
 | ghostcommit.commitMode | hybrid | hybrid / auto / generic |
 | ghostcommit.autoPush | true | Push automatico do README |
-| ghostcommit.template | artistic | artistic / cyber / retro |
+| ghostcommit.template | ghost | ghost / wraith / shadow |
 
 ## Templates SVG
 
-- **Artistic** (hand-drawn)
-- **Cyber-Minimalist** (clean modern)
-- **Retro Terminal** (ASCII pixel style)
+- **Ghost** (dark blue)
+- **Wraith** (dark green)
+- **Shadow** (dark purple)
 
 ## Tech Stack
 
 - TypeScript + Node.js
 - VS Code Extension API
-- Gemini API (opcional, para resumos)
 - Octokit (GitHub API)
 
 ---

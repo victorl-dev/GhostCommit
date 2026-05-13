@@ -26,6 +26,8 @@ export class SessionCache {
   private sessions: SessionData[] = [];
   private currentSession: SessionData | null = null;
   private storagePath: string;
+  private saveTimer: NodeJS.Timeout | undefined;
+  private savePromise: Promise<void> | undefined;
 
   constructor(context: vscode.ExtensionContext) {
     this.storagePath = context.globalStorageUri.fsPath;
@@ -54,11 +56,24 @@ export class SessionCache {
   }
 
   private save() {
+    if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = undefined;
+      this.savePromise = new Promise<void>((resolve) => {
+        fs.writeFile(this.cacheFile, JSON.stringify({
+          sessions: this.sessions,
+          currentSession: this.currentSession
+        }), 'utf-8', () => resolve());
+      });
+    }, 300);
+  }
+
+  private saveNow() {
     try {
       fs.writeFileSync(this.cacheFile, JSON.stringify({
         sessions: this.sessions,
         currentSession: this.currentSession
-      }, null, 2), 'utf-8');
+      }), 'utf-8');
     } catch (err) {
       console.error('ghostcommit: Failed to save cache', err);
     }
@@ -75,7 +90,7 @@ export class SessionCache {
       summary: '',
       committed: false
     };
-    this.save();
+    this.saveNow();
   }
 
   addEntry(entry: SessionEntry) {
@@ -89,12 +104,13 @@ export class SessionCache {
 
   commitSession(summary: string) {
     if (this.currentSession) {
+      if (this.saveTimer) clearTimeout(this.saveTimer);
       this.currentSession.summary = summary;
       this.currentSession.committed = true;
       this.currentSession.endTime = new Date().toISOString();
       this.sessions.push(this.currentSession);
       this.currentSession = null;
-      this.save();
+      this.saveNow();
     }
   }
 
@@ -163,5 +179,39 @@ export class SessionCache {
       }
     }
     return { saves, lines, langs, projects: [...projects], hiddenProjects };
+  }
+
+  getRecentProjects(): string[] {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    const all = [...this.sessions, ...(this.currentSession ? [this.currentSession] : [])];
+    for (let i = all.length - 1; i >= 0; i--) {
+      for (const entry of all[i].entries) {
+        const name = entry.hidden ? '[hidden]' : entry.projectName;
+        if (!seen.has(name) && name !== 'unknown') {
+          seen.add(name);
+          result.push(name);
+          if (result.length >= 3) return result;
+        }
+      }
+    }
+    return result;
+  }
+
+  getLastFile(): { name: string; hidden: boolean } | null {
+    const all = [...this.sessions, ...(this.currentSession ? [this.currentSession] : [])];
+    for (let i = all.length - 1; i >= 0; i--) {
+      const entries = all[i].entries;
+      for (let j = entries.length - 1; j >= 0; j--) {
+        const e = entries[j];
+        if (!e.hidden) return { name: e.fileName, hidden: false };
+      }
+    }
+    const firstHidden = all.reduce<(typeof all[0]['entries'][0])|null>((found, s) => {
+      const h = s.entries.find(e => e.hidden);
+      return h || found;
+    }, null);
+    if (firstHidden) return { name: '[hidden]', hidden: true };
+    return null;
   }
 }

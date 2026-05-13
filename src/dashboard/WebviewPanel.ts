@@ -24,7 +24,10 @@ export class WebviewPanel {
         'ghostcommit.dashboard',
         'ghostcommit Dashboard',
         vscode.ViewColumn.One,
-        { enableScripts: true }
+        {
+          enableScripts: true,
+          retainContextWhenHidden: true
+        }
       );
 
       this.panel.webview.onDidReceiveMessage(msg => {
@@ -37,10 +40,18 @@ export class WebviewPanel {
       }, undefined, this.context.subscriptions);
 
       this.panel.onDidDispose(() => this.panel = undefined);
+      this.panel.onDidChangeViewState(e => {
+        log.appendLine(`[viewState] visible=${e.webviewPanel.visible} active=${e.webviewPanel.active}`);
+      });
       this.rebuildHtml();
       log.appendLine('[createOrShow] done');
     } catch (err) {
       log.appendLine(`[createOrShow] ERROR: ${err}`);
+      vscode.window.showErrorMessage(
+        'ghostcommit: Dashboard failed to load.\n' +
+        (err instanceof Error ? `${err.name}: ${err.message}` : String(err)) +
+        '\n\nCheck Output > "ghostcommit Dashboard" for details.'
+      );
     }
   }
 
@@ -61,7 +72,7 @@ export class WebviewPanel {
     const cfg = vscode.workspace.getConfiguration('ghostcommit');
     const threshold = cfg.get<number>('changeThreshold', 10);
     const interval = cfg.get<number>('flushInterval', 30);
-    const template = cfg.get<string>('template', 'artistic');
+    const template = cfg.get<string>('template', 'ghost');
 
     log.appendLine(`[buildHtml] threshold=${threshold} interval=${interval}`);
 
@@ -81,7 +92,7 @@ export class WebviewPanel {
     }).join('');
 
     const projs = [...t.projects, ...t.hiddenProjects.map(() => '[private]')].join(', ') || '-';
-    const tmplOpts = ['artistic','cyber','retro'].map(tm =>
+    const tmplOpts = ['ghost','wraith','shadow'].map(tm =>
       `<option value="${tm}"${tm===template?' selected':''}>${tm.charAt(0).toUpperCase()+tm.slice(1)}</option>`
     ).join('');
 

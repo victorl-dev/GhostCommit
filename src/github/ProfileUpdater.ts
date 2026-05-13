@@ -15,15 +15,37 @@ export class ProfileUpdater {
 
   private updateSvgStats() {
     if (!this.cache) return;
-    const byLang = this.cache.getActivityByLanguage();
-    const total = this.cache.getTotalStats();
-    const recent = this.cache.getRecentSessions(1);
+    const today = this.cache.getTodayStats();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todaySessions = [...this.cache['sessions'] as any[], ...(this.cache['currentSession'] ? [this.cache['currentSession']] : [])]
+      .filter((s: any) => s.date === todayStr).length;
+
+    // Convert today's langs to ActivityStats format
+    const byLanguage: Record<string, { saves: number; lines: number }> = {};
+    for (const [ext, count] of Object.entries(today.langs)) {
+      byLanguage[ext] = { saves: count, lines: count };
+    }
+
+    // Get today's last file
+    let lastFile = '';
+    const allData = [...(this.cache as any)['sessions'] as any[], ...((this.cache as any)['currentSession'] ? [(this.cache as any)['currentSession']] : [])];
+    for (let i = allData.length - 1; i >= 0; i--) {
+      const s = allData[i];
+      if (s.date !== todayStr) continue;
+      for (let j = s.entries.length - 1; j >= 0; j--) {
+        if (!s.entries[j].hidden) { lastFile = s.entries[j].fileName; break; }
+      }
+      if (lastFile) break;
+    }
+
     this.svgGen.updateStats({
-      totalSaves: total.totalSaves,
-      totalLines: total.totalLines,
-      sessions: this.cache.getSessionCount(),
-      byLanguage: byLang,
-      lastSummary: recent[0]?.summary || 'No activity yet'
+      totalSaves: today.saves,
+      totalLines: today.lines,
+      sessions: todaySessions,
+      byLanguage,
+      lastSummary: 'Today',
+      projects: today.projects,
+      lastFile
     });
   }
 
@@ -123,8 +145,25 @@ export class ProfileUpdater {
 
     this.updateSvgStats();
     const svgRaw = await this.svgGen.generate();
-    const svgBase64 = Buffer.from(svgRaw).toString('base64');
-    const svgImg = `<img src="data:image/svg+xml;base64,${svgBase64}" alt="GhostCommit Metrics"/>`;
+    const svgFilename = 'ghostcommit-metrics.svg';
+
+    // Push SVG as a file to the profile repo
+    let svgSha: string | undefined;
+    try {
+      const { data: existing } = await client.request('GET /repos/{owner}/{repo}/contents/{path}', {
+        owner: username, repo, path: svgFilename
+      });
+      svgSha = (existing as { sha: string }).sha;
+    } catch {}
+
+    await client.request('PUT /repos/{owner}/{repo}/contents/{path}', {
+      owner: username, repo, path: svgFilename,
+      message: '[GhostCommit] Update metrics SVG',
+      content: Buffer.from(svgRaw).toString('base64'),
+      sha: svgSha
+    });
+
+    const svgImg = `<img src="https://raw.githubusercontent.com/${username}/${username}/main/${svgFilename}?t=${Date.now()}" alt="GhostCommit Metrics"/>`;
     const metricsSection = this.buildMetricsSection();
 
     const beforeStart = readmeContent.split(VIBE_START)[0];

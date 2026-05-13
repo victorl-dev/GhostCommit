@@ -9,17 +9,16 @@ import { StatusBarManager } from '../status/StatusBar';
 const OBFUSCATED_NAME = '[private]';
 const TRACKED_EXTS = new Set(['.ts','.tsx','.js','.jsx','.py','.rs','.go','.java','.kt','.swift','.dart','.rb','.php','.c','.cpp','.h','.hpp','.cs','.fs','.vue','.svelte','.css','.scss','.less','.html','.json','.yaml','.yml','.toml','.md','.sql','.graphql','.prisma']);
 
-
+const OUT = vscode.window.createOutputChannel('ghostcommit:tracker');
 
 export class FileMonitor {
   private disposables: vscode.Disposable[] = [];
   private running = false;
   private lastActivityTime = Date.now();
   private uniqueFiles = new Set<string>();
+  private totalChanges = 0;
   private flushTimer: NodeJS.Timeout | undefined;
-
-  // Track which files we've already added entries for in this session
-  private sessionFiles = new Set<string>();
+  private lastSeen = new Map<string, number>();
 
   constructor(
     private cache: SessionCache,
@@ -90,41 +89,44 @@ export class FileMonitor {
     return TRACKED_EXTS.has(ext);
   }
 
-  // Debounce: skip if same URI was seen in the last 1000ms
   private onFileChange(uri: vscode.Uri, source: string) {
     if (!this.running) return;
     if (uri.scheme !== 'file') return;
     if (!this.isTrackedExt(uri)) return;
 
     const fileKey = uri.fsPath.toLowerCase();
+    const now = Date.now();
+    const last = this.lastSeen.get(fileKey) || 0;
+    if (now - last < 500) return;
+    this.lastSeen.set(fileKey, now);
 
-    // Only count unique files per session
+    this.lastActivityTime = now;
+
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+    const projectName = workspaceFolder ? path.basename(workspaceFolder.uri.fsPath) : 'unknown';
+    const { hidden: isHidden } = this.isBlacklisted(uri);
+
+    this.cache.addEntry({
+      timestamp: new Date().toISOString(),
+      fileExt: path.extname(uri.fsPath),
+      linesAdded: 1,
+      linesRemoved: 0,
+      projectName: isHidden ? OBFUSCATED_NAME : projectName,
+      fileName: isHidden ? '[hidden]' : path.basename(uri.fsPath),
+      hidden: isHidden
+    });
+
+    this.totalChanges++;
     if (!this.uniqueFiles.has(fileKey)) {
       this.uniqueFiles.add(fileKey);
-      this.lastActivityTime = Date.now();
-
-      const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
-      const projectName = workspaceFolder ? path.basename(workspaceFolder.uri.fsPath) : 'unknown';
-      const { hidden: isHidden } = this.isBlacklisted(uri);
-
-      // Only add a cache entry once per file per session
-      if (!this.sessionFiles.has(fileKey)) {
-        this.sessionFiles.add(fileKey);
-        const entry: SessionEntry = {
-          timestamp: new Date().toISOString(),
-          fileExt: path.extname(uri.fsPath),
-          linesAdded: 1,
-          linesRemoved: 0,
-          projectName: isHidden ? OBFUSCATED_NAME : projectName,
-          fileName: isHidden ? '[hidden]' : path.basename(uri.fsPath),
-          hidden: isHidden
-        };
-        this.cache.addEntry(entry);
-      }
-
-      this.statusBar.setChangeCount(this.uniqueFiles.size);
-      this.checkFlushConditions();
     }
+
+    OUT.appendLine(`[${source}] ${path.basename(uri.fsPath)} — total: ${this.totalChanges}`);
+    this.statusBar.setChangeCount(this.totalChanges);
+    if (this.totalChanges <= 5) {
+      vscode.window.setStatusBarMessage(`$(graph) GhostCommit: saved ${path.basename(uri.fsPath)}`, 2000);
+    }
+    this.checkFlushConditions();
   }
 
   private checkFlushConditions() {
@@ -132,13 +134,13 @@ export class FileMonitor {
     const threshold = config.get<number>('changeThreshold', 10);
     const idleMinutes = config.get<number>('flushInterval', 30);
 
-    if (this.uniqueFiles.size >= threshold) {
+    if (this.totalChanges >= threshold) {
       this.flush();
       return;
     }
 
     const elapsed = (Date.now() - this.lastActivityTime) / 1000 / 60;
-    if (elapsed >= idleMinutes && this.uniqueFiles.size > 0) {
+    if (elapsed >= idleMinutes && this.totalChanges > 0) {
       this.flush();
     }
   }
@@ -149,7 +151,7 @@ export class FileMonitor {
 
     this.clearFlushTimer();
     this.uniqueFiles.clear();
-    this.sessionFiles.clear();
+    this.totalChanges = 0;
 
     try {
       const aiSummary = await this.ai.generateSummary(session.entries);
@@ -162,13 +164,17 @@ export class FileMonitor {
         const exts = [...new Set(session.entries.map(e => e.fileExt))].filter(Boolean).join(', ');
         finalSummary = `Coding session · ${session.entries.length} file(s) · ${exts || 'various'}`;
       } else if (mode === 'hybrid') {
-        const choice = await vscode.window.showInformationMessage(
-          `ghostcommit commit: "${aiSummary}"`,
-          { modal: false },
-          'Accept',
-          'Edit',
-          'Use Generic'
-        );
+        const timeout = new Promise<string | undefined>(r => setTimeout(() => r(undefined), 40000));
+        const choice = await Promise.race([
+          vscode.window.showInformationMessage(
+            `ghostcommit commit: "${aiSummary}"`,
+            { modal: false },
+            'Accept',
+            'Edit',
+            'Use Generic'
+          ),
+          timeout
+        ]);
 
         if (choice === 'Edit') {
           const custom = await vscode.window.showInputBox({
