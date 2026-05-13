@@ -1,5 +1,7 @@
 # GhostCommit
 
+![Icon](https://res.cloudinary.com/dmii83n8i/image/upload/w_290,f_auto,q_auto/icon_qt5lxq)
+
 **Auto commits & GitHub Shadow Tracker**
 
 [English Version](#-english-version) | [Versão em Português](#-versão-em-português)
